@@ -1,0 +1,7 @@
+venv/
+.idea/
+__pycache__/
+data/
+taunt_alexis.py
+script.py
+count_lines_of_code.py
