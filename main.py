@@ -1,6 +1,7 @@
 # Jerrin Shirks
 # native imports
 from discord import Interaction
+from discord.ext import tasks
 from discord.ext.commands import CommandNotFound, CommandOnCooldown
 import datetime
 
@@ -8,19 +9,30 @@ import datetime
 from jerrinth import JerrinthBot
 from funcs.handle_dms import *
 from wrappers import *
+from support import *
+from config import *
 
 
 Jerrinth = JerrinthBot(data_version=1,
-                       debug=True,
-                       maintenance=False,
-                       direct_message=True)
+                       debug=DEBUG,
+                       maintenance=MAINTENANCE,
+                       direct_message=DIRECT_MESSAGES)
+
+
+
+
 
 
 @Jerrinth.event
 async def on_guild_join(guild: discord.Guild):
-    private_log = Jerrinth.get_channel(Jerrinth.settings["private"])
+    private_log = Jerrinth.get_channel(Jerrinth.settings["channel_private"])
     Jerrinth.ensureServerExists(guild.id, guild.name)
     Jerrinth.getServer(guild.id).pop("presence", None)
+
+    # if it is the first server, save the server to the settings
+    if len(Jerrinth.guilds) == 1:
+        Jerrinth.settings["server_main"] = guild.id
+        Jerrinth.saveSettings()
 
     embed = newEmbed()
     if guild.icon is not None:
@@ -40,7 +52,7 @@ async def on_guild_join(guild: discord.Guild):
 @Jerrinth.event
 async def on_guild_remove(guild: discord.Guild):
     await Jerrinth.wait_until_ready()
-    private_log = Jerrinth.get_channel(Jerrinth.settings["private"])
+    private_log = Jerrinth.get_channel(Jerrinth.settings["channel_private"])
     Jerrinth.ensureServerExists(guild.id, guild.name)
     Jerrinth.getServer(guild.id)["presence"] = False
 
@@ -63,7 +75,7 @@ async def on_member_join(member) -> None:
 
 
     """If someone joins my main server, ping them and try to get them to stay lol"""
-    if member.guild.id == Jerrinth.settings["main_server"]:
+    if member.guild.id == Jerrinth.settings["server_main"]:
         channel = Jerrinth.get_channel(970214072052240424)
         await channel.send(f"Welcome {member.mention}!"
                            f"\nTry using my **,ai** command! Ask me anything!"
@@ -116,11 +128,35 @@ async def on_message(message: discord.Message) -> None:
                 return # await message.reply("I am down for maintenance right now.")
 
 
+    text = ctx.message.content.lower().replace(" ", "")
+
     # prevent collision with another bot
-    if "hey peter" in ctx.message.content.lower():
+    if "heypeter" in text:
         return
+
+    if "bassproshop" in text:
+        await ctx.message.add_reaction("🐟")
+
+    # for funny shenanigans (replying "real")
+    if Jerrinth.getServer(ctx).get("say_real", True):
+        if "real" in text:
+            if random.random() < 0.25:
+                if random.random() < 0.1:
+                    await message.channel.send("too real!")
+                else:
+                    await message.channel.send("real")
+
+    # for funny shenanigans (replying "true")
+    if Jerrinth.getServer(ctx).get("say_true", True):
+        if "true" in text:
+            if random.random() < 0.25:
+                if random.random() < 0.1:
+                    await message.channel.send("so true!")
+                else:
+                    await message.channel.send("true")
+
     # prevents bots from using the bot
-    elif ctx.message.author.bot: # prevents bots from using the bot
+    if ctx.message.author.bot: # prevents bots from using the bot
         return
 
     if Jerrinth.direct_message:

@@ -2,6 +2,7 @@
 
 # native imports
 from discord.ext import commands
+from pyparsing import ParseException # ,solve
 import time
 
 # custom imports
@@ -9,8 +10,7 @@ from jerrinth import JerrinthBot
 from wrappers import *
 from support import *
 from cogs.help import HelpCog
-from pyparsing import ParseException # ,solve
-
+from config import *
 
 
 class AICog(commands.Cog):
@@ -25,7 +25,7 @@ class AICog(commands.Cog):
 
 
     @commands.command(name="ai", aliases=['AI', 'Ai', "aI"])
-    @discord.ext.commands.cooldown(1, 4, commands.BucketType.guild)
+    @discord.ext.commands.cooldown(*AI_COOLDOWN)
     @ctx_wrapper
     @channel_redirect
     async def AICommand(self, ctx):
@@ -146,7 +146,7 @@ class AICog(commands.Cog):
                                          color=discord.Color.from_rgb(0, 0, 0))
                         return await ctx.send(embed, reference=True)
 
-                # sexual/minors
+                # violence
                 if categories["violence"] > 0.1 or categories["violence/graphic"] > 0.1:
                     if not ctx.nsfw:
                         embed = newEmbed("Violent content is only allowed in NSFW channels.",
@@ -191,7 +191,7 @@ class AICog(commands.Cog):
                 text = f"Try again in **{error.retry_after:.3f}**s."
                 await ctx.send(text)
             else:
-                await ctx.super.message.add_reaction(convertDecimalToClock(error.retry_after / 4))
+                await ctx.super.message.add_reaction(convertDecimalToClock(error.retry_after / AI_COOLDOWN[1]))
 
 
     # need to rewrite for admin
@@ -252,7 +252,7 @@ class AICog(commands.Cog):
         await ctx.send(embed)
 
     @commands.command(name="solve", aliases=["s"])
-    @discord.ext.commands.cooldown(1, 4, commands.BucketType.guild)
+    @discord.ext.commands.cooldown(*SOLVE_COOLDOWN)
     @ctx_wrapper
     @channel_redirect
     async def solveEquationCommand(self, ctx, *args):
@@ -266,13 +266,28 @@ class AICog(commands.Cog):
                 await ctx.send(embed)
 
             try:
-                if expression.replace(" ", "") == "9+10":
+                if expression.replace(" ", "") in ["9+10", "9+(10)", "(9)+10"]:
                     embed = newEmbed(f"**21**")
                     return await ctx.send(embed, reference=True)
 
+                # allows discord code blocks to work
+                expression = expression.replace("`", "")
+                # makes "()" become "(0)"
+                expression = expression.replace("()", "(0)")
+                # adds 0's hanging "."'s to make syntax easier
+                expression = insert_zero(expression)
+                # convert 2(2) to 2*(2)
+                expression = insert_star(expression)
+                # piggywink exclusive
+                expression = expression.replace("•", "*")
+
+                print(expression)
+
                 answer = self.bot.nsp.eval(expression)
-                if "." not in expression and ".0" in str(answer):
+
+                if "." not in expression and str(answer).endswith(".0"):
                     answer = int(answer)
+
                 embed = newEmbed(f"**{answer}**")
                 await ctx.send(embed)
 
@@ -283,7 +298,7 @@ class AICog(commands.Cog):
             except ParseException as e:
                 embed = errorEmbed(title="Parsing Error")
                 print(e.pstr, e.loc)
-                segment = e.pstr[e.loc - 1:e.loc + 9]
+                segment = e.pstr[e.loc - 5:e.loc + 9]
                 if len(segment) > 10:
                     segment += " ..."
 
@@ -306,7 +321,7 @@ class AICog(commands.Cog):
                 text = f"Try again in **{error.retry_after:.3f}**s."
                 await ctx.send(text)
             else:
-                await ctx.super.message.add_reaction(convertDecimalToClock(error.retry_after/4))
+                await ctx.super.message.add_reaction(convertDecimalToClock(error.retry_after/SOLVE_COOLDOWN[1]))
 
 
 

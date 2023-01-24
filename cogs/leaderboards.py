@@ -7,6 +7,7 @@ from discord.ext import commands
 from jerrinth import JerrinthBot
 from wrappers import *
 from support import *
+from config import *
 
 
 
@@ -46,6 +47,7 @@ class LeaderBoardsCog(commands.Cog):
 
 
     @commands.command(name="topservai", aliases=["tsa", "TSA", "Tsa"])
+    @discord.ext.commands.cooldown(*LEADERBOARD_COOLDOWN)
     @ctx_wrapper
     @channel_redirect
     async def topServerAICommand(self, ctx, amount=None):
@@ -53,6 +55,7 @@ class LeaderBoardsCog(commands.Cog):
 
 
     @commands.command(name="topservi", aliases=["tsi", "TSI", "Tsi"])
+    @discord.ext.commands.cooldown(*LEADERBOARD_COOLDOWN)
     @ctx_wrapper
     @channel_redirect
     async def topServerFindImgCommand(self, ctx, amount=None):
@@ -60,6 +63,7 @@ class LeaderBoardsCog(commands.Cog):
 
 
     @commands.command(name="topservf", aliases=["tsf", "TSF", "Tsf"])
+    @discord.ext.commands.cooldown(*LEADERBOARD_COOLDOWN)
     @ctx_wrapper
     @channel_redirect
     async def topServerFindSeedCommand(self, ctx, amount=None):
@@ -67,6 +71,7 @@ class LeaderBoardsCog(commands.Cog):
 
 
     @commands.command(name="topservs", aliases=["tss", "TSS", "Tss"])
+    @discord.ext.commands.cooldown(*LEADERBOARD_COOLDOWN)
     @ctx_wrapper
     @channel_redirect
     async def topAtSomeoneCommand(self, ctx, amount=None):

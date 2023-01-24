@@ -38,8 +38,12 @@ class JerrinthBot(commands.Bot, DataManager):
 
         # settings
         self.settings_file = "data/settings.json"
-        self.settings = read_json(self.settings_file)
-        self.logChannelID = self.settings["log_channel_id"]
+        self.settings = read_json(self.settings_file, EMPTY_SETTINGS)
+        self.logChannelID = self.settings["channel_log"]
+
+        # ensure settings are good
+        if self.settings["discord_token"] is None:
+            raise Exception("No discord token found in ~/data/settings.json.")
 
         # prepare packages
         self.nsp = NumericStringParser()
@@ -51,7 +55,7 @@ class JerrinthBot(commands.Bot, DataManager):
         self.run(self.settings["discord_token"])
 
     def getLogChannel(self):
-        return self.get_channel(self.settings["log_channel_id"])
+        return self.get_channel(self.settings["channel_log"])
 
     async def setup_hook(self) -> None:
         """ This is called when the bot boots, to set up the global commands """

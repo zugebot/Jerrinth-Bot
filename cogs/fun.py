@@ -9,7 +9,7 @@ import time
 from jerrinth import JerrinthBot
 from wrappers import *
 from support import *
-
+from config import *
 
 
 class FunCog(commands.Cog):
@@ -31,7 +31,7 @@ class FunCog(commands.Cog):
 
 
     @commands.command(name='findseed', description='Roll an end-portal eye count.\n')
-    @discord.ext.commands.cooldown(2, 45, commands.BucketType.user)
+    @discord.ext.commands.cooldown(*FINDSEED_COOLDOWN)
     @ctx_wrapper
     @channel_redirect
     async def findseedCommand(self, ctx):
@@ -63,11 +63,11 @@ class FunCog(commands.Cog):
             if self.bot.getServer(ctx).get("show_time_left", True):
                 await ctx.send(f"Try again in **{error.retry_after:.3f}**s.")
             else:
-                await ctx.super.message.add_reaction(convertDecimalToClock(error.retry_after / 45))
+                await ctx.super.message.add_reaction(convertDecimalToClock(error.retry_after / FINDSEED_COOLDOWN[1]))
 
 
     @commands.command(name='someone', description='Ping a random person!\n')
-    @discord.ext.commands.cooldown(1, 120, commands.BucketType.guild)
+    @discord.ext.commands.cooldown(*SOMEONE_COOLDOWN)
     @ctx_wrapper
     @channel_redirect
     async def pingSomeoneCommand(self, ctx):
@@ -94,7 +94,7 @@ class FunCog(commands.Cog):
                 if self.bot.getServer(ctx).get("show_time_left", True):
                     await ctx.send(f"Try again in **{error.retry_after:.3f}**s.")
                 else:
-                    await ctx.super.message.add_reaction(convertDecimalToClock(error.retry_after / 120))
+                    await ctx.super.message.add_reaction(convertDecimalToClock(error.retry_after / SOMEONE_COOLDOWN[1]))
             else:
                 await ctx.message.add_reaction("❌")
                 self.pingSomeoneCommand.reset_cooldown(ctx.super)

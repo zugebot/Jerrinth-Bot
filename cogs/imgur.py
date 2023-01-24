@@ -9,7 +9,7 @@ import time
 from jerrinth import JerrinthBot
 from wrappers import *
 from support import *
-
+from config import *
 
 
 class ImgurCog(commands.Cog):
@@ -24,7 +24,7 @@ class ImgurCog(commands.Cog):
 
 
     @commands.command(name="findimg", aliases=["FINDIMG"])
-    @discord.ext.commands.cooldown(1, 4, commands.BucketType.guild)
+    @discord.ext.commands.cooldown(*FINDIMG_COOLDOWN)
     @ctx_wrapper
     @channel_redirect
     async def findImageCommand(self, ctx):
@@ -66,11 +66,9 @@ class ImgurCog(commands.Cog):
             if self.bot.getServer(ctx).get("show_time_left", True):
                 await ctx.send(f"Try again in **{error.retry_after:.3f}**s.")
             else:
-                await ctx.super.message.add_reaction(convertDecimalToClock(error.retry_after / 4))
+                await ctx.super.message.add_reaction(convertDecimalToClock(error.retry_after / FINDIMG_COOLDOWN[1]))
         else:
             await ctx.message.add_reaction("❌")
-
-
 
 
 

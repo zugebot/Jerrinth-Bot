@@ -5,6 +5,7 @@ import os
 import json
 import discord
 from discord import ext
+from discord.ext import commands
 import re
 import random
 
@@ -14,14 +15,17 @@ def clear():
     os.system('cls')
 
 
-def try_make_json(filename):
+def try_make_json(filename, override):
     if not os.path.exists(filename):
         with open(filename, 'w') as fp:
-            fp.write("{}")
+            if override is None:
+                fp.write("{}")
+            else:
+                fp.write(override)
 
 
-def read_json(filename):
-    try_make_json(filename)
+def read_json(filename, override=None):
+    try_make_json(filename, override)
     with open(filename, "r") as file:
         return json.loads(file.read())
 
@@ -57,6 +61,8 @@ def separate(word, symbol=" "):
     return symbol.join([i for i in word])
 
 
+# no longer used
+"""
 def loadBadWords(filename):
     with open(filename, "r+") as file:
         badwords_init = file.read().splitlines()
@@ -84,10 +90,9 @@ def loadBadWords(filename):
 
     return badwords
 
-
 BADWORDS_FILE = "data/badwords.txt"
 BADWORDS = loadBadWords(BADWORDS_FILE)
-
+"""
 
 def removeBadWords(string):
     count = 0
@@ -360,14 +365,17 @@ BAD_RESPONSES_8BALL = ["Do you participate in the contest of the most useless qu
                        "I do not understand."]
 
 EMPTY_SETTINGS = {
+    # not really necessary
     "data_version": None,  # int
     "last_update": None,  # int
-    "log_channel_id": None,  # channel id int
-    "private": None,  # channel id int
-    "main_server": None,  # server id int
+    # used for yes
+    "server_main": None,  # server id: int
+    "channel_log": None,  # channel id: int
+    "channel_private": None,  # channel id: int
+    # used for api's
     "imgur_client_id": None,  # token
     "discord_token": None, # token
-    "openai_api_keys": []
+    "openai_api_keys": [] # list[str]
 }
 
 EMPTY_SERVER = {
@@ -408,11 +416,12 @@ EMPTY_SOMEONE = {
     "last_use": None
 }
 
+
 TIPS = [
     "I often give much better answers if you end your questions with the correct punctuation!",
     "I am not complete up to date to the times! My training ends somewhere in 2021.",
     "You can use me to cheat on your english essays!",
-    "Different Engines are made for different questions. Try Changing it with the **engine** command!",
+    "Different Engines are made for different questions. Try Changing it with the **,engine** command!",
     "",
     "",
     "",
@@ -740,9 +749,32 @@ def convertDecimalToClock(decimal: float = None) -> str:
     return clocks[index]
 
 
+def insert_zero(string):
+    """for use of ,solve"""
+    result = ""
+    for i in range(len(string)):
+        if string[i] == "." and not string[i - 1].isdigit():
+            result += "0" + string[i]
+        elif i == 0 and string[i] == ".":
+            result += "0" + string[i]
+        else:
+            result += string[i]
+
+    return result
 
 
-
+def insert_star(string):
+    """for use of ,solve"""
+    new_str = ""
+    for i in range(len(string)):
+        if string[i].isdigit():
+            if string[i + 1] == "(":
+                new_str += string[i] + "*"
+            else:
+                new_str += string[i]
+        else:
+            new_str += string[i]
+    return new_str
 
 
 

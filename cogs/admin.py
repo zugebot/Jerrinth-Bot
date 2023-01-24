@@ -6,7 +6,10 @@ import datetime
 
 # custom imports
 from jerrinth import JerrinthBot
+from config import *
 from wrappers import *
+from wrappers import *
+
 
 
 class AdminCog(commands.Cog):
@@ -177,6 +180,43 @@ class AdminCog(commands.Cog):
     async def toggleTimeLeftCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.send("Only admins can toggle the time left display on or off!")
+
+
+    @commands.command(name="togglereal", aliases=["toggleReal"])
+    @commands.has_permissions(administrator=True)
+    @ctx_wrapper
+    async def toggleRealCommand(self, ctx):
+        value = toggleDictBool(self.bot.getServer(ctx), "say_real", True)
+        self.bot.saveData()
+        if not value:
+            embed = newEmbed("I will **no longer say real!**")
+        else:
+            embed = newEmbed("I now have a **20% chance to say real!**")
+        await ctx.send(embed)
+
+    @toggleRealCommand.error
+    async def toggleTrueCommandError(self, ctx, error):
+        if isinstance(error, commands.errors.MissingPermissions):
+            await ctx.send("Only admins can toggle the time left display on or off!")
+
+
+    @commands.command(name="toggletrue", aliases=["toggleTrue"])
+    @commands.has_permissions(administrator=True)
+    @ctx_wrapper
+    async def toggleTrueCommand(self, ctx):
+        value = toggleDictBool(self.bot.getServer(ctx), "say_true", True)
+        self.bot.saveData()
+        if not value:
+            embed = newEmbed("I will **no longer say true!**")
+        else:
+            embed = newEmbed("I now have a **20% chance to say true!**")
+        await ctx.send(embed)
+
+    @toggleRealCommand.error
+    async def toggleTrueCommandError(self, ctx, error):
+        if isinstance(error, commands.errors.MissingPermissions):
+            await ctx.send("Only admins can toggle the time left display on or off!")
+
 
 
 

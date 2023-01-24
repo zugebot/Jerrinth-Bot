@@ -7,14 +7,13 @@ from discord.ext import commands
 from jerrinth import JerrinthBot
 from wrappers import *
 from support import *
-
+from config import *
 
 
 class HelpCog(commands.Cog):
     def __init__(self, bot):
         self.bot: JerrinthBot = bot
         self.star = "☆"  # ☆★⭐
-
 
     @commands.command(name="help", aliases=["h2"])
     @ctx_wrapper
@@ -61,14 +60,14 @@ class HelpCog(commands.Cog):
                           f"\n``Page 2``: Commands: AI"
                           f"\n``Page 3``: Commands: FUN"
                           f"\n``Page 4``: Commands: Leaderboard"
-                          f"\n``Page 5``: Commands: Admin"
-                          f"\n``Page 6``: Update Log")
-        embed1.set_author(name="0/6 - Help Page", icon_url=ctx.author.avatar)
+                          f"\n``Page 5``: Commands: Admin")
+        # f"\n``Page 6``: Update Log")
+        embed1.set_author(name="0/5 - Help Page", icon_url=ctx.author.avatar)
 
         embed2 = newEmbed(f"  {start}profile *id`` - meant to show all your stats!"
                           f"\n{start}channels   `` - shows a list of all usable channels in this server."
                           f"\n{start}debug      `` - a toggle for use debugging me."
-                          f"\n{start2}/ping     `` - The bot will reply with it's ping."
+                          f"\n{start2}/ping       `` - The bot will reply with it's ping!"
                           f"\n"
                           f"\n★ All multi-word commands can also be used with their acronyms."
                           f"\n★ (arg) after a command means you need to pass a value to it."
@@ -80,7 +79,7 @@ class HelpCog(commands.Cog):
                           f"\nCreated by: <@611427346099994641>"
                           f"\n__**[You can find my owner here!](https://discord.gg/vGW4pSF8wc)**__")
 
-        embed2.set_author(name="1/6 - Commands: Overview", icon_url=ctx.author.avatar)
+        embed2.set_author(name="1/5 - Commands: Overview", icon_url=ctx.author.avatar)
 
         embed3 = newEmbed(f"  {start}ai *args `` - Ask me anything!"
                           f"\n{start}solve equ`` - Will solve any non-variable problem."
@@ -88,28 +87,30 @@ class HelpCog(commands.Cog):
                           f"\n{start}aifooter `` - shows the current engine in response footer."
                           f"\n{start}aihelp   `` - indepth use of args for the **AI** command."
                           f"\n{start}togglenginehelp`` - Toggles {prefix}engine showing help.")
-        embed3.set_author(name="2/6 - Commands: AI", icon_url=ctx.author.avatar)
+        embed3.set_author(name="2/5 - Commands: AI", icon_url=ctx.author.avatar)
 
-        embed4 = newEmbed(f"\n{start}findseed   `` - roll a random minecraft end portal!"
-                          f"\n{start}eyecount   `` - display how many rolls you have of each eye count!"
-                          f"  {start}findimg    `` - sends a random imgur link!"
-                          f"\n{start2}@someone    `` - ping a random person!"
-                          f"\n{start}8ball *args`` - ask the magical :8ball: a question!"
+        embed4 = newEmbed(f"\n{start}findseed `` - roll a random minecraft end portal!"
+                          f"\n{start}eyecount `` - display how many rolls you have of each eye count!"
+                          f"  {start}findimg  `` - sends a random imgur link!"
+                          f"\n{start2}@someone`` - ping a random person!"
+                          f"\n{start}8ball ...`` - ask the magical :8ball: a question!"
                           f"\n{self.star} ``more coming soon.``")
-        embed4.set_author(name="3/6 - Commands: FUN", icon_url=ctx.author.avatar)
+        embed4.set_author(name="3/5 - Commands: FUN", icon_url=ctx.author.avatar)
 
         embed5 = newEmbed(f"  {start}data   `` - shows *my* overall accomplishments!"
                           f"\n{start}tsa *n `` - leaderboard of **AI** command uses."
                           f"\n{start}tsi *n `` - leaderboard of **FINDIMG** command uses."
                           f"\n{start}tsf *n `` - leaderboard of **FINDSEED** command uses."
                           f"\n{start}tss *n `` - leaderboard of **@SOMEONE** command uses.")
-        embed5.set_author(name="4/6 - Commands: Leaderboard", icon_url=ctx.author.avatar)
+        embed5.set_author(name="4/5 - Commands: Leaderboard", icon_url=ctx.author.avatar)
 
         embed6 = newEmbed(f"\n{start}setprefix prefix `` - allows changing the server bot prefix."
                           f"\n{start}togglecensor     `` - Toggles the censorship of 18+ words."
                           f"\n{start}toggleredirect   `` - Toggles me showing guidance to the clueless."
                           f"\n{start}togglesomeone    `` - Toggles letting people use @someone."
                           f"\n{start}toggletimeleft   `` - Toggles showing command refresh time."
+                          f"\n{start}togglereal       `` - Toggles me saying \"true\" when one says \"true\"."
+                          f"\n{start}togglereal       `` - Toggles me saying \"real\" when one says \"real\"."
                           f"\n"
                           f"\n{start}addchannel *id`` - allows a channel to use commands."
                           f"\n{start}addchannel all`` - allows **all** channels to use commands."
@@ -120,7 +121,7 @@ class HelpCog(commands.Cog):
                           f"\n{start}channelengine *n `` - makes all users in a channel use set engine."
                           f"\n{start}channelengine del`` - removes a set engine from a channel.")
 
-        embed6.set_author(name="5/6 - Commands: Admin", icon_url=ctx.author.avatar)
+        embed6.set_author(name="5/5 - Commands: Admin", icon_url=ctx.author.avatar)
 
         """
         embed7 = newEmbed(f"Last updated <t:{self.bot.settings['last_update']}>."
@@ -141,7 +142,6 @@ class HelpCog(commands.Cog):
         except discord.errors.Forbidden:
             await ctx.send("Something with my permissions prevents me from sending the help command. "
                            "Consider giving me elevated roles and try again.")
-
 
     @commands.command(name="aihelp", aliaes=[])
     @ctx_wrapper
@@ -174,7 +174,6 @@ class HelpCog(commands.Cog):
                   f"\n**{prefix}ai** **r=1** **f=t** pick a random number between 1 and 10.")
 
         await ctx.send(embed)
-
 
     @commands.command(name="server", aliases=[])
     @ctx_wrapper

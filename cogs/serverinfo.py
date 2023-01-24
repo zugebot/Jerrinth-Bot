@@ -30,12 +30,16 @@ class ServerInfoCog(commands.Cog):
         someone = server.get("@someone", False)
         redirect = server.get("channel_redirect", True)
         timeleft = server.get("show_time_left", True)
+        sayreal = server.get("say_real", True)
+        saytrue = server.get("say_true", True)
 
         table = [
             [emoji(censor), f"Channel Redirect", f"{prefix}toggleredirect"],
             [emoji(someone), f"@someone Command", f"{prefix}togglesomeone"],
             [emoji(redirect), f"{prefix}ai Censorship", f"{prefix}togglecensor"],
-            [emoji(timeleft), f"Show Time Left", f"{prefix}toggletimeleft"]
+            [emoji(timeleft), f"Show Time Left", f"{prefix}toggletimeleft"],
+            [emoji(sayreal), f"\"True\" Response", f"{prefix}toggletrue"],
+            [emoji(saytrue), f"\"Real\" Response", f"{prefix}togglereal"]
         ]
 
         data = makeTable(table,
