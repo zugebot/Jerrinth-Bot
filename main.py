@@ -130,12 +130,28 @@ async def on_message(message: discord.Message) -> None:
 
     text = ctx.message.content.lower().replace(" ", "")
 
+
     # prevent collision with another bot
     if "heypeter" in text:
         return
 
+    if Jerrinth.direct_message:
+        # send dm-messages to log channel
+        if isinstance(message.channel, discord.DMChannel):
+            return await handleDMs(Jerrinth, ctx)
+        # send log-messages to dms
+        if message.channel.id == 1057516665992134777:
+            return await handleSendingDMs(Jerrinth, ctx, message)
+
+
+    Jerrinth.ensureServerExists(ctx)
+
+    if Jerrinth.debug == (ctx.server != "1048372362900410408"):
+        return
+
+
     if "bassproshop" in text:
-        await ctx.message.add_reaction("🐟")
+        await ctx.message.add_reaction(random.choice(FISH))
 
     # for funny shenanigans (replying "real")
     if Jerrinth.getServer(ctx).get("say_real", True):
@@ -154,24 +170,6 @@ async def on_message(message: discord.Message) -> None:
                     await message.channel.send("so true!")
                 else:
                     await message.channel.send("true")
-
-    # prevents bots from using the bot
-    if ctx.message.author.bot: # prevents bots from using the bot
-        return
-
-    if Jerrinth.direct_message:
-        # send dm-messages to log channel
-        if isinstance(message.channel, discord.DMChannel):
-            return await handleDMs(Jerrinth, ctx)
-        # send log-messages to dms
-        if message.channel.id == 1057516665992134777:
-            return await handleSendingDMs(Jerrinth, ctx, message)
-
-
-    Jerrinth.ensureServerExists(ctx)
-
-    if Jerrinth.debug == (ctx.server != "1048372362900410408"):
-        return
 
     # process all commands
     await Jerrinth.process_commands(message)

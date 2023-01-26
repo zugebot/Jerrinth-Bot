@@ -29,7 +29,7 @@ class AICog(commands.Cog):
     @ctx_wrapper
     @channel_redirect
     async def AICommand(self, ctx):
-        TEXT = ctx.message.content[5:]
+        TEXT = ctx.message.content[4:]
 
         """IF IT IS AN EMPTY MESSAGE BRING UP HELP DIALOG"""
         prefix = self.bot.getPrefix(ctx)
@@ -81,6 +81,7 @@ class AICog(commands.Cog):
                       f"\nRANDOM: {bool(RANDOM)} {random_num}" \
                       f"\nENGINE: {engines[ENGINE]} {channel_override}" \
                       f"\nTEXT  : {filterGarbage(TEXT)[:25]}...```"
+            message = removePings(message)
             await ctx.send(message)
 
         """SHOW THE BOT TYPING WHILE DOING THE BELOW"""
@@ -167,6 +168,7 @@ class AICog(commands.Cog):
             if FORMAT in ["T", "C"]:
                 segments = splitResponse(response, 2000)
                 for n, segment in enumerate(segments):
+                    segment = removePings(segment)
                     await ctx.send(segment, reference=(n == 0))
 
             elif FORMAT == "E":

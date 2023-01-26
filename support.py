@@ -741,6 +741,9 @@ def toggleDictBool(dictionary: dict, tag: str, default=True) -> bool:
     return value
 
 
+FISH = [fish for fish in "🐠🐟🦐🦞🦀🦑🐙🐬🐳🦈🎣🐡"]
+
+
 def convertDecimalToClock(decimal: float = None) -> str:
     clocks = "🕛🕚🕙🕘🕗🕖🕕🕔🕓🕒🕑🕐"
     if decimal is None:
@@ -777,7 +780,9 @@ def insert_star(string):
     return new_str
 
 
-
+def removePings(segment):
+    segment = segment.replace("@", "\\@")
+    return segment
 
 
 

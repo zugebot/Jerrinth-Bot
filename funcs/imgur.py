@@ -71,7 +71,7 @@ class Imgur:
             data = await self.getImageDetails(image_id=data["id"])
             data = data["data"]
 
-            pprint.pprint(data)
+            # pprint.pprint(data)
 
             message = ""
 
@@ -86,8 +86,8 @@ class Imgur:
             data = await self.getAlbumDetails(album_id=data["id"])
             data = data["data"]
 
-            print("#"*50)
-            pprint.pprint(data)
+            # print("#"*50)
+            # pprint.pprint(data)
 
 
 

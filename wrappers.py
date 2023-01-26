@@ -49,5 +49,8 @@ def channel_redirect(func):
 
                 return await args[1].send(embed, reference=True)
 
+            else:
+                return None
+
         return await func(*args, **kwargs)
     return wrapper

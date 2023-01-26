@@ -1,8 +1,8 @@
 
 from discord.ext import commands
 
-DEBUG = True
-DIRECT_MESSAGES = False
+DEBUG = False
+DIRECT_MESSAGES = True
 MAINTENANCE = False
 
 

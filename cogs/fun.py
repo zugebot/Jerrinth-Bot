@@ -17,6 +17,10 @@ class FunCog(commands.Cog):
         self.bot: JerrinthBot = bot
         self.eye_count = 12
 
+    @commands.command(name='say', description='gg')
+    @ctx_wrapper
+    async def sayCommand(self, ctx):
+        await ctx.send(ctx.super.message.content)
 
     @commands.command(name='8ball', description='Let the 8 Ball Predict!\n')
     @ctx_wrapper
