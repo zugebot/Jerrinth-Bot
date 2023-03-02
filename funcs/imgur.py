@@ -40,7 +40,7 @@ class Imgur:
                     self.data["random"] = await response.json()
 
     # for ,findimg
-    def getRandomImage(self, ctx) -> str | None:
+    def getRandomImage(self, ctx) -> str or None:
         while len(self.data["random"]) > 2:
             image = self.data["random"].pop(0)
             if image["is_ad"] or ((not ctx.nsfw) and image["is_mature"]):

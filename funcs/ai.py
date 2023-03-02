@@ -2,18 +2,21 @@
 
 # custom imports
 import openai
-from transformers import GPT2TokenizerFast
 from aiohttp import ClientSession
 import random
 import asyncio
+import tiktoken
+import time
 
 
 class AI:
     def __init__(self, bot):
         self.bot = bot
-        self.tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
+        self.encoding = tiktoken.get_encoding("gpt2")
         self.openai = openai
+        self.key_index = 0
         self.token_limit = {
+            "gpt-3.5-turbo": 4000,
             "text-davinci-003": 4000,
             "text-davinci-002": 2048,
             "text-davinci-001": 2048,
@@ -24,7 +27,8 @@ class AI:
             "code-davinci-001": 2048,
             "code-cushman-001": 2048,
         }
-        self.engines = ["text-davinci-003",
+        self.engines = ["gpt-3.5-turbo",
+                        "text-davinci-003",
                         "text-davinci-002",
                         "text-davinci-001",
                         "text-curie-001",
@@ -35,12 +39,17 @@ class AI:
                         "code-cushman-001"
                         ]
 
-    def loadRandomAIKey(self) -> None:
-        self.openai.api_key = random.choice(self.bot.settings["openai_api_keys"])
 
-    def popOpenAIKey(self) -> None:
-        self.bot.settings["openai_api_keys"].pop(openai.api_key)
-        self.loadRandomAIKey()
+    def getAPIKeys(self):
+        return self.bot.settings["openai_api_keys"]
+
+    def getNextKey(self) -> None:
+        self.openai.api_key = self.getAPIKeys()[self.key_index]
+        self.key_index = (self.key_index + 1) % len(self.getAPIKeys())
+
+    def popKey(self) -> None:
+        self.bot.settings["openai_api_keys"].pop(self.key_index)
+        self.getNextKey()
         self.bot.saveSettings()
 
     def getTokenCount(self, text: str, engine: str) -> int:
@@ -57,14 +66,84 @@ class AI:
         return metrics
 
 
-    async def getResponse(self, engine, text, randomness):
 
+    async def getChat(self, data):
         self.openai.aiosession.set(ClientSession())
 
-        async def getResponseWrapper(_engine, _text, _randomness):
+        async def getChatResponseWrapper(message_data):
 
             try:
-                self.loadRandomAIKey()
+                self.getNextKey()
+                response = await self.openai.ChatCompletion.acreate(
+                    model="gpt-3.5-turbo",
+                    messages=message_data
+                )
+
+                # import pprint
+                # pprint.pprint(response, indent=4)
+
+                # updates token if quota ends
+                if "error" in response:
+                    if response["error"]["type"] == "insufficient_quota":
+                        self.popKey()
+                        print("(,chat) Popping API Key")
+                        return False, "try_again"
+
+                else:
+                    finish_reason = response['choices'][0]['finish_reason']
+                    if finish_reason not in ["stop", "length"]:
+                        print("(,chat) Bad Finish Reason")
+                        return False, "try_again"
+
+                    # no response
+                    if response['choices'][0]['message']['content'] == "":
+                        response['choices'][0]['message']['content'] = "For some reason I do not have a response for that!"
+                        return True, response
+
+                return True, response
+
+            except openai.error.RateLimitError:
+                print("(,chat) openai.error.RateLimitError")
+                return False, "try_again"
+
+            except openai.error.ServiceUnavailableError:
+                print("(,chat) openai.error.ServiceUnavailableError")
+                return False, "try_again"
+
+            except openai.error.APIError:
+                print("(,chat) openai.error.APIError")
+                return False, "try_again"
+
+            except Exception as e:
+                print("(,chat) Other error:", e, e.args)
+                return False, "try_again"
+
+
+        for _ in range(3):
+            status, resp = await getChatResponseWrapper(data)
+            if status:
+                await openai.aiosession.get().close()
+                return True, resp
+            else:
+                if resp == "try_again":
+                    print("(,chat) trying again")
+                    await asyncio.sleep(3)
+                    continue
+        else:
+            await openai.aiosession.get().close()
+            return False, "Please try again!\nAn unknown error occurred."
+
+
+
+
+
+    async def getResponse(self, engine, text, randomness):
+        self.openai.aiosession.set(ClientSession())
+
+        async def getAiResponseWrapper(_engine, _text, _randomness):
+
+            try:
+                self.getNextKey()
                 response = await self.openai.Completion.acreate(
                     engine=self.engines[_engine],
                     prompt=_text,
@@ -78,7 +157,7 @@ class AI:
                 # updates token if quota ends
                 if "error" in response:
                     if response["error"]["type"] == "insufficient_quota":
-                        self.popOpenAIKey()
+                        self.popKey()
                         return False, "try_again"
 
                 else:
@@ -109,19 +188,19 @@ class AI:
                 return False, "try_again"
 
             except Exception as e:
-                if self.bot.debug:
-                    print(e)
+                # if self.bot.debug:
+                print(e)
                 return False, "try_again"
 
 
-
         for _ in range(3):
-            status, resp = await getResponseWrapper(engine, text, randomness)
+            status, resp = await getAiResponseWrapper(engine, text, randomness)
             if status:
                 await openai.aiosession.get().close()
                 return True, resp
             else:
                 if resp == "try_again":
+                    print("trying again")
                     await asyncio.sleep(3)
                     continue
         else:

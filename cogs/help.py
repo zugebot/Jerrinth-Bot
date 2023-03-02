@@ -13,15 +13,16 @@ from config import *
 class HelpCog(commands.Cog):
     def __init__(self, bot):
         self.bot: JerrinthBot = bot
-        self.star = "☆"  # ☆★⭐
 
     @commands.command(name="help", aliases=["h2"])
     @ctx_wrapper
     async def displayHelpCommand(self, ctx, page=None):
+        star = "☆"  # ☆★⭐
 
         possible_args = [
             ["profile", "channels", "debug", "ping"],
             ["ai", "openai", "solve", "engine", "setfooter"],
+            ["chat", "history"],
             ["fun", "findimg", "findseed", "eyecount", "someone", "@someone", "8ball"],
             ["leaderboard", "board", "data", "tsa", "tsi", "tsf", "tss"],
             ["admin", "mod", "prefix", "censor", "redirect",
@@ -31,26 +32,28 @@ class HelpCog(commands.Cog):
             ["about"],
         ]
 
-        # parse the arg:
+
+        if isinstance(page, int):
+            page = str(page - 1)
         if page == "":
             page = 0
         elif page is None:
             page = 0
         elif page.isnumeric():
-            page = int(page)
-            if not (0 < page < 6):
+            page = int(page) - 1
+            if not (0 < page < 7):
                 page = 0
         else:
             for n, arg_list in enumerate(possible_args):
                 if page in arg_list:
-                    page = n + 1
+                    page = n
                     break
             else:
                 page = 0
 
         prefix = self.bot.data[ctx.server]["prefix"]
-        start = f"{self.star} ``{prefix}"
-        start2 = f"{self.star} ``"
+        start = f"{star} ``{prefix}"
+        start2 = f"{star} ``"
 
         embed1 = newEmbed(f"  Hey there! My name's Jerrinth. "
                           f"\nI was created specifically to answer your every question! "
@@ -58,16 +61,18 @@ class HelpCog(commands.Cog):
                           f"\n"
                           f"\n``Page 1``: Commands: Overview"
                           f"\n``Page 2``: Commands: AI"
-                          f"\n``Page 3``: Commands: FUN"
-                          f"\n``Page 4``: Commands: Leaderboard"
-                          f"\n``Page 5``: Commands: Admin")
+                          f"\n``Page 3``: Commands: Chat"
+                          f"\n``Page 4``: Commands: FUN"
+                          f"\n``Page 5``: Commands: Leaderboard"
+                          f"\n``Page 6``: Commands: Admin")
         # f"\n``Page 6``: Update Log")
-        embed1.set_author(name="0/5 - Help Page", icon_url=ctx.author.avatar)
+        embed1.set_author(name="0/6 - Help Page", icon_url=ctx.author.avatar)
 
         embed2 = newEmbed(f"  {start}profile *id`` - meant to show all your stats!"
                           f"\n{start}channels   `` - shows a list of all usable channels in this server."
                           f"\n{start}debug      `` - a toggle for use debugging me."
-                          f"\n{start2}/ping       `` - The bot will reply with it's ping!"
+                          f"\n{start}server     `` - sends a link to the bot's main server."
+                          f"\n{start2}/ping       `` - the bot will reply with it's ping!"
                           f"\n"
                           f"\n★ All multi-word commands can also be used with their acronyms."
                           f"\n★ (arg) after a command means you need to pass a value to it."
@@ -79,7 +84,7 @@ class HelpCog(commands.Cog):
                           f"\nCreated by: <@611427346099994641>"
                           f"\n__**[You can find my owner here!](https://discord.gg/vGW4pSF8wc)**__")
 
-        embed2.set_author(name="1/5 - Commands: Overview", icon_url=ctx.author.avatar)
+        embed2.set_author(name="1/6 - Commands: Overview", icon_url=ctx.author.avatar)
 
         embed3 = newEmbed(f"  {start}ai *args `` - Ask me anything!"
                           f"\n{start}solve equ`` - Will solve any non-variable problem."
@@ -87,41 +92,65 @@ class HelpCog(commands.Cog):
                           f"\n{start}aifooter `` - shows the current engine in response footer."
                           f"\n{start}aihelp   `` - indepth use of args for the **AI** command."
                           f"\n{start}togglenginehelp`` - Toggles {prefix}engine showing help.")
-        embed3.set_author(name="2/5 - Commands: AI", icon_url=ctx.author.avatar)
+        embed3.set_author(name="2/6 - Commands: AI", icon_url=ctx.author.avatar)
 
-        embed4 = newEmbed(f"\n{start}findseed `` - roll a random minecraft end portal!"
-                          f"\n{start}eyecount `` - display how many rolls you have of each eye count!"
-                          f"  {start}findimg  `` - sends a random imgur link!"
-                          f"\n{start2}@someone`` - ping a random person!"
-                          f"\n{start}8ball ...`` - ask the magical :8ball: a question!"
-                          f"\n{self.star} ``more coming soon.``")
-        embed4.set_author(name="3/5 - Commands: FUN", icon_url=ctx.author.avatar)
+        embed3 = newEmbed(f"  {start}chat *msg   `` - Just like **{prefix}ai**, but with memory!"
+                          f"\n{start}chat clear  `` - Clears the bot's message memory."
+                          f"\n{start}chat history`` - Shows the messages the bot remembers."
+                          f"\n{start}chat prompt `` - Shows the current prompt."
+                          f"\n{start}chat setprompt   *msg`` - Sets the prompt for the bot to follow."
+                          f"\n{start}chat resetprompt *msg`` - Resets the prompt that bot follows. "
+                          f"\n"
+                          f"\n★ Chat's are per channel."
+                          f"\n"
+                          f"\n★ The Default prompt is: **'You are a helpful assistant.'**"
+                          f"\n★ Think of the default prompt, as the main rule the bot follows"
+                          f"\n★ whilst answering your questions.")
+        embed3.set_author(name="3/6 - Commands: Chat", icon_url=ctx.author.avatar)
+
+        embed4 = newEmbed(f"\n{start}findseed  `` - roll a random minecraft end portal!"
+                          f"\n{start}eyecount  `` - display how many rolls you have of each eye count!"
+                          f"\n{start}findimg   `` - sends a random imgur link!"
+                          f"\n{start2}@someone   `` - ping a random person!"
+                          f"\n{start}8ball *msg`` - ask the magical :8ball: a question!"
+                          f"\n{star}  ``more coming soon.``")
+        embed4.set_author(name="4/6 - Commands: FUN", icon_url=ctx.author.avatar)
 
         embed5 = newEmbed(f"  {start}data   `` - shows *my* overall accomplishments!"
                           f"\n{start}tsa *n `` - leaderboard of **AI** command uses."
                           f"\n{start}tsi *n `` - leaderboard of **FINDIMG** command uses."
                           f"\n{start}tsf *n `` - leaderboard of **FINDSEED** command uses."
                           f"\n{start}tss *n `` - leaderboard of **@SOMEONE** command uses.")
-        embed5.set_author(name="4/5 - Commands: Leaderboard", icon_url=ctx.author.avatar)
+        embed5.set_author(name="5/6 - Commands: Leaderboard", icon_url=ctx.author.avatar)
 
-        embed6 = newEmbed(f"\n{start}setprefix prefix `` - allows changing the server bot prefix."
-                          f"\n{start}togglecensor     `` - Toggles the censorship of 18+ words."
-                          f"\n{start}toggleredirect   `` - Toggles me showing guidance to the clueless."
-                          f"\n{start}togglesomeone    `` - Toggles letting people use @someone."
-                          f"\n{start}toggletimeleft   `` - Toggles showing command refresh time."
-                          f"\n{start}togglereal       `` - Toggles me saying \"true\" when one says \"true\"."
-                          f"\n{start}togglereal       `` - Toggles me saying \"real\" when one says \"real\"."
+        embed6 = newEmbed(f"**All commands here can only be used by those with admin privileges.**"
                           f"\n"
+                          f"\n_Toggleable default settings for the server._"
+                          f"\n{start}setprefix prefix`` - allows changing the server bot prefix."
+                          f"\n{start}togglecensor    `` - Toggles the censorship of 18+ words."
+                          f"\n{start}toggleredirect  `` - Toggles me showing guidance to the clueless."
+                          f"\n{start}togglesomeone   `` - Toggles letting people use @someone."
+                          f"\n{start}toggletimeleft  `` - Toggles showing command refresh time."
+                          f"\n{start}togglereal      `` - Toggles saying **\"true\"** when one says **\"true\"**."
+                          f"\n{start}togglereal      `` - Toggles saying **\"real\"** when one says **\"real\"**."
+                          f"\n"
+                          f"\n_In order to use me, add me to a channel with these commands._"
                           f"\n{start}addchannel *id`` - allows a channel to use commands."
                           f"\n{start}addchannel all`` - allows **all** channels to use commands."
                           f"\n"
+                          f"\n_You can remove my access to channels with these commands._"
                           f"\n{start}delchannel *id`` - disables a channel from using commands."
                           f"\n{start}delchannel all`` - disables **all** channels from using commands."
                           f"\n"
+                          f"\n_The Use of any of these commands are channel specific._"
                           f"\n{start}channelengine *n `` - makes all users in a channel use set engine."
-                          f"\n{start}channelengine del`` - removes a set engine from a channel.")
+                          f"\n{start}channelengine del`` - removes a set engine from a channel."
+                          f"\n"
+                          f"\n_The Use of any of these commands are channel and 'chat-turbo-3.5' specific._"
+                          f"\n{start}channelprompt *msg`` - makes all **{prefix}chat** use a custom prompt."
+                          f"\n{start}channelprompt del `` - removes the channel prompt.")
 
-        embed6.set_author(name="5/5 - Commands: Admin", icon_url=ctx.author.avatar)
+        embed6.set_author(name="6/6 - Commands: Admin", icon_url=ctx.author.avatar)
 
         """
         embed7 = newEmbed(f"Last updated <t:{self.bot.settings['last_update']}>."

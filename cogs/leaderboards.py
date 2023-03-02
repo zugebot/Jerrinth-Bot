@@ -45,6 +45,22 @@ class LeaderBoardsCog(commands.Cog):
                                 )
         await ctx.send(newEmbed(leaderboard, title=title))
 
+    @commands.command(name="leaderboards", aliases=["ts", "lb"])
+    @ctx_wrapper
+    @channel_redirect
+    async def showLeaderboardsCommand(self, ctx):
+        prefix = self.bot.getPrefix(ctx)
+
+        embed = trophyEmbed()
+        embed.title = "Leaderboards"
+        embed.description = f"\n**``{prefix}tsa``** - **{prefix}ai** command uses." \
+                            f"\n**``{prefix}tsi``** - **{prefix}findimg** command uses." \
+                            f"\n**``{prefix}tsf``** - **{prefix}findseed** command uses." \
+                            f"\n**``{prefix}tss``** - **@someone** command uses."
+        await ctx.send(embed)
+
+
+
 
     @commands.command(name="topservai", aliases=["tsa", "TSA", "Tsa"])
     @discord.ext.commands.cooldown(*LEADERBOARD_COOLDOWN)

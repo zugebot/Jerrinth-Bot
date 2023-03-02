@@ -7,6 +7,7 @@ MAINTENANCE = False
 
 
 AI_COOLDOWN = (1, 3, commands.BucketType.user)
+CHAT_COOLDOWN = (1, 3, commands.BucketType.user)
 SOLVE_COOLDOWN = (1, 2, commands.BucketType.user)
 FINDIMG_COOLDOWN = (1, 2, commands.BucketType.guild)
 FINDSEED_COOLDOWN = (2, 45, commands.BucketType.user)

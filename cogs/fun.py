@@ -51,14 +51,18 @@ class FunCog(commands.Cog):
         e_eye = self.bot.getEmoji("mc_portal_full")
 
         eyes_bool = [i > 0.9 for i in eyes]
-        eyes_message = "".join([[e_empty, e_eye][eyes_bool[x]] for x in range(self.eye_count)])
+
+        message = ""
+        if self.bot.getUser(ctx).get("show_findseed_eyes", False):
+            message = "".join([[e_empty, e_eye][eyes_bool[x]] for x in range(self.eye_count)]) + "\n"
+
         eye_count = sum(eyes_bool)
 
         self.bot.getUser(ctx)["findseed"]["eye_count"][eye_count] += 1
         self.bot.getUser(ctx)["findseed"]["total_uses"] += 1
         self.bot.getUser(ctx)["findseed"]["last_use"] = time.time()
 
-        await ctx.send(eyes_message + "\n" + f"<@{ctx.author.id}> → your seed is a **{eye_count}** eye.")
+        await ctx.send(message + f"<@{ctx.author.id}> → your seed is a **{eye_count}** eye.")
 
     @findseedCommand.error
     @ctx_wrapper
@@ -70,7 +74,7 @@ class FunCog(commands.Cog):
                 await ctx.super.message.add_reaction(convertDecimalToClock(error.retry_after / FINDSEED_COOLDOWN[1]))
 
 
-    @commands.command(name='someone', description='Ping a random person!\n')
+    @commands.command(name='someone', aliases=["SOMEONE"], description='Ping a random person!\n')
     @discord.ext.commands.cooldown(*SOMEONE_COOLDOWN)
     @ctx_wrapper
     @channel_redirect

@@ -150,12 +150,12 @@ async def testAdmin(ctx) -> bool:
 
 
 def makeTable(data,
-              boldRow: int | list[int] = None,
-              boldCol: int | list[int] = None,
-              code: int | list[int] = None,
-              sep: int | dict = None,
+              boldRow: int or list[int] = None,
+              boldCol: int or list[int] = None,
+              code: int or list[int] = None,
+              sep: int or dict = None,
               show_index: bool = False,
-              direction: int | str = 0,
+              direction: int or str = 0,
               debug: bool = False) -> str:
     """
     :param data: a list of objects, lists, or other data.
@@ -754,6 +754,8 @@ def convertDecimalToClock(decimal: float = None) -> str:
 
 def insert_zero(string):
     """for use of ,solve"""
+    if "." not in string:
+        return string
     result = ""
     for i in range(len(string)):
         if string[i] == "." and not string[i - 1].isdigit():
@@ -768,6 +770,8 @@ def insert_zero(string):
 
 def insert_star(string):
     """for use of ,solve"""
+    if "(" not in string:
+        return string
     new_str = ""
     for i in range(len(string)):
         if string[i].isdigit():
@@ -786,4 +790,12 @@ def removePings(segment):
 
 
 
-
+def tryConvertToCodeBlock(content):
+    languages = ["python", "c++", "java", "rust", "html", "javascript"]
+    for language in languages:
+        if language in user_input:
+            content = f"```{language}\n{content}```"
+            break
+    else:
+        content = f"```{content}```"
+    return content

@@ -21,7 +21,7 @@ class AdminCog(commands.Cog):
     @commands.command(aliases=['purge', 'delete'])
     @commands.has_permissions(administrator=True)
     @ctx_wrapper
-    async def clearCommand(self, ctx, amount: int | None):
+    async def clearCommand(self, ctx, amount: int or None):
         amount = argParseInt(amount)
         if amount is None:
             embed = newEmbed(f"You must specify an amount between 1 and {self.message_delete_cap}.")
@@ -154,7 +154,7 @@ class AdminCog(commands.Cog):
             await ctx.send("Only admins can toggle the redirect message appearance!")
 
 
-    @commands.command(name="togglesomeone", aliases=["ts"])
+    @commands.command(name="togglesomeone", aliases=[])
     @commands.has_permissions(administrator=True)
     @ctx_wrapper
     async def toggleSomeoneCommand(self, ctx):
@@ -216,6 +216,19 @@ class AdminCog(commands.Cog):
     async def toggleTrueCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.send("Only admins can toggle the time left display on or off!")
+
+
+    @commands.command(name="togglefindseedeye", aliases=[])
+    @ctx_wrapper
+    async def toggleFindseedEyesCommand(self, ctx):
+        value = toggleDictBool(self.bot.getUser(ctx), "show_findseed_eyes", False)
+        self.bot.saveData()
+        if not value:
+            embed = newEmbed("Findseed now shows portal emojis!")
+        else:
+            embed = newEmbed("Findseed no longer shows portal emojis!")
+        await ctx.send(embed)
+
 
 
 

@@ -21,7 +21,7 @@ class DataManager:
 
 
     # ensure functions
-    def ensureServerExists(self, ctx: ctxObject | str | int, name=None) -> bool:
+    def ensureServerExists(self, ctx: ctxObject or str or int, name=None) -> bool:
         if isinstance(ctx, int):
             ctx = str(ctx)
 
@@ -60,7 +60,7 @@ class DataManager:
 
 
     # get functions
-    def getServer(self, ctx: ctxObject | str | int) -> dict or None:
+    def getServer(self, ctx: ctxObject or str or int) -> dict or None:
         if isinstance(ctx, int):
             ctx = str(ctx)
 
