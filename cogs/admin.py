@@ -14,7 +14,7 @@ from files.wrappers import *
 class AdminCog(commands.Cog):
     def __init__(self, bot):
         self.bot: JerrinthBot = bot
-        self.message_delete_cap: int = 50
+        self.message_delete_cap: int = 51
 
 
     @commands.command(aliases=['purge', 'delete'])
