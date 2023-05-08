@@ -54,6 +54,11 @@ class JerrinthBot(commands.Bot, DataManager):
 
         # custom prompts
         self.ai_prompts = os.listdir(self.directory + "data/prompts")
+        self.ai_prompt_dict = {}
+        for file in os.listdir(self.directory + f"data/prompts"):
+            key = file.split(".")[0]
+            with open(self.directory + f"data/prompts/{file}", "r", encoding='utf-8') as f:
+                self.ai_prompt_dict[key] = f.read()
 
         # ensure settings are good
         if self.settings["discord_token"] is None:
@@ -63,7 +68,6 @@ class JerrinthBot(commands.Bot, DataManager):
         self.nsp = NumericStringParser()
         self.imgur = Imgur(self)
         self.ai = AI(self)
-
 
     def begin(self):
         self.run(self.settings["discord_token"])

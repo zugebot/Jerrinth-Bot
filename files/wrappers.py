@@ -15,7 +15,7 @@ def is_jerrin(func):
     async def wrapper(*args, **kwargs):
         if args[1].author.id == discord_id:
             return await func(*args, **kwargs)
-        await args[1].send(errorEmbed(description=f"Only <@{discord_id}> can use this."))
+        await args[1].sendError(f"Only <@{discord_id}> can use this.")
     return wrapper
 
 
@@ -28,8 +28,7 @@ def ctx_wrapper(func):
         args = tuple(args)
 
         if str(args[1].user) in args[0].bot.banned_users:
-            embed = errorEmbed("My creator has specifically blacklisted you from using me lol.")
-            return await args[1].send(embed)
+            return await args[1].sendError("My creator has specifically blacklisted you from using me lol.")
 
         return await func(*args, **kwargs)
     return wrapper

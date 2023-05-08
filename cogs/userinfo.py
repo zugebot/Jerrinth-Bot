@@ -117,7 +117,8 @@ class UserInfoCog(commands.Cog):
             ("findseed", f"{prefix}findseed"),
             ("playrandom", f"{prefix}playrandom"),
             ("@someone", f"@someone"),
-            ("whisper", f"{prefix}whisper")
+            ("whisper", f"{prefix}whisper"),
+            ("play", f"{prefix}play")
         ]
 
         data = []

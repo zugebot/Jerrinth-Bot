@@ -20,8 +20,7 @@ class ChannelsCog(commands.Cog):
     async def setChannelEngineCommand(self, ctx, engineArg: str = ""):
 
         if engineArg == "":
-            embed = errorEmbed(f"Please specify a number between **1** and **{len(self.bot.ai.engines)}** !")
-            return await ctx.send(embed)
+            return await ctx.sendError(f"Please specify a number between **1** and **{len(self.bot.ai.engines)}** !")
 
         if engineArg == "del":
             self.bot.ensureChannelExists(ctx)
@@ -44,8 +43,7 @@ class ChannelsCog(commands.Cog):
             await ctx.send(embed, reference=True)
 
         else:
-            embed = errorEmbed(f"**'{engineArg}'** is not a valid engine number!")
-            await ctx.send(embed, reference=True)
+            await ctx.sendError(f"**'{engineArg}'** is not a valid engine number!", reference=True)
     @setChannelEngineCommand.error
     @ctx_wrapper
     async def setChannelEngineCommandError(self, ctx, error):
@@ -145,9 +143,7 @@ class ChannelsCog(commands.Cog):
         else:
             description = f"**I can now only use channels that were added using the {prefix}addchannel.**"
 
-        embed = newEmbed(description)
-        await ctx.send(embed)
-
+        await ctx.sendEmbed(description)
 
 
 async def setup(bot):

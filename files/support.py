@@ -598,12 +598,29 @@ class ctxObject:
                     return await self.super.reply(mention_author=True, **kwargs)
                 else:
                     return await self.super.reply(mention_author=False, **kwargs)
-
-
         await self.super.send(**kwargs)
 
+    async def sendError(self, *args, **kwargs):
+        allowed_mentions = kwargs.get("allowed_mentions", False)
+        if "allowed_mentions" in kwargs:
+            kwargs.pop("allowed_mentions")
+        reference = kwargs.get("reference", None)
+        if "reference" in kwargs:
+            kwargs.pop("reference")
 
+        embed = errorEmbed(*args, **kwargs)
+        await self.send(embed, allowed_mentions, reference)
 
+    async def sendEmbed(self, *args, **kwargs):
+        allowed_mentions = kwargs.get("allowed_mentions", False)
+        if "allowed_mentions" in kwargs:
+            kwargs.pop("allowed_mentions")
+        reference = kwargs.get("reference", None)
+        if "reference" in kwargs:
+            kwargs.pop("reference")
+
+        embed = newEmbed(*args, **kwargs)
+        await self.send(embed, allowed_mentions, reference)
 
 
 class ButtonMenu(discord.ui.View):

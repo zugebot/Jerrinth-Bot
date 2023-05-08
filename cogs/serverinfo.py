@@ -48,8 +48,7 @@ class ServerInfoCog(commands.Cog):
                          sep={1: " - "},
                          direction=2)
 
-        embed = newEmbed(f"Prefix: **{prefix}**\n" + data, title="Server Settings")
-        await ctx.send(embed)
+        await ctx.sendEmbed(f"Prefix: **{prefix}**\n" + data, title="Server Settings")
 
 
 async def setup(bot):

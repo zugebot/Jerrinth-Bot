@@ -67,7 +67,7 @@ class VoiceChatCog(commands.Cog):
         try:
             await ctx.super.author.voice.channel.connect()
         except discord.ext.commands.errors.CommandInvokeError:
-            return await ctx.send(errorEmbed("I am already being used in a different channel!"))
+            return await ctx.sendError("I am already being used in a different channel!")
 
     @joinCommand.error
     @ctx_wrapper
@@ -166,8 +166,7 @@ class VoiceChatCog(commands.Cog):
 
             self.bot.getServer(ctx)["vc_volume"] = new_volume
             self.bot.saveData()
-            embed = newEmbed(f"Volume has been set to **{'%.0f' % new_volume}%**")
-            await ctx.send(embed)
+            await ctx.sendEmbed(f"Volume has been set to **{'%.0f' % new_volume}%**")
 
     @stopCommand.error
     @ctx_wrapper
@@ -256,8 +255,7 @@ class VoiceChatCog(commands.Cog):
                 if "youtu" in url and "/" in url:
                     try:
                         if url in self.downloading_urls:
-                            return await ctx.send(
-                                errorEmbed(f"I am currently downloading that video! Hold your horses."))
+                            return await ctx.sendErro(f"I am currently downloading that video! Hold your horses.")
                         loop = asyncio.get_event_loop()
                         self.downloading_urls.append(url)
                         arg1, arg2, title = await loop.run_in_executor(None, self.downloadYoutubeVideo, url)
@@ -266,16 +264,16 @@ class VoiceChatCog(commands.Cog):
                             hours = arg2 // 3600
                             min = str(arg2 // 60).rjust(2, "0")
                             sec = str(int(arg2 % 60)).rjust(2, "0")
-                            return await ctx.send(errorEmbed(f"Video must be shorter than 30 minutes.\n"
-                                                             f"**Video length:** ``{hours}:{min}:{sec}``"))
+                            return await ctx.sendError(f"Video must be shorter than 30 minutes.\n"
+                                                             f"**Video length:** ``{hours}:{min}:{sec}``")
                         file_name = arg2
                         description = f"Played a youtube video!\n\n**{title}**\n{escaped_url}"
 
                     except Exception as err:
                         if url in self.downloading_urls:
                             self.downloading_urls.remove(url)
-                        return await ctx.send(errorEmbed(f"Something went wrong downloading this youtube video.\n"
-                                                         f"Error: {err}"))
+                        return await ctx.sendError(f"Something went wrong downloading this youtube video.\n"
+                                                         f"Error: {err}")
                 else:
                     file_name = f'{self.dir}temp.mp3'
                     description = f"Played a link!\n``{url}``"
@@ -285,8 +283,7 @@ class VoiceChatCog(commands.Cog):
             elif url.isdigit():
                 url = int(url)
                 if url > len(files):
-                    embed = errorEmbed(f"Please specify a song index below {len(files)}")
-                    return await ctx.send(embed)
+                    return await ctx.sendError(f"Please specify a song index below {len(files)}")
                 file_name = f"{self.dir}/{files[url]}"
                 description = f"Played a file at index {url}.\n``{files[url]}``"
 
@@ -296,10 +293,10 @@ class VoiceChatCog(commands.Cog):
                 file_name = f'{self.dir}{_file}'
                 description = f"Played a file.\n``{_file}``"
             else:
-                return await ctx.send(errorEmbed("That is not a valid link or previous file."))
+                return await ctx.sendError("That is not a valid link or previous file.")
 
         else:
-            return await ctx.send(errorEmbed("Something went wrong..."))
+            return await ctx.sendError("Something went wrong...")
         await ctx.message.delete()
 
         vc = await self.joinVC(ctx)
@@ -313,8 +310,7 @@ class VoiceChatCog(commands.Cog):
         self.bot.saveData()
 
         prefix = self.bot.getPrefix(ctx)
-        embed = newEmbed(description=f"**{prefix}play** used by <@{ctx.user}>\n{description}")
-        await ctx.send(embed)
+        await ctx.sendEmbed(f"**{prefix}play** used by <@{ctx.user}>\n{description}")
 
         await self.playAudio(ctx, vc, file_name)
 
@@ -340,7 +336,7 @@ class VoiceChatCog(commands.Cog):
         files = os.listdir(self.dir)
         if len(files) == 0:
             prefix = self.bot.getPrefix(ctx)
-            return await ctx.send(errorEmbed(f"There are no files to play! Consider using {prefix}play to add some."))
+            return await ctx.sendError(f"There are no files to play! Consider using {prefix}play to add some.")
 
         file = random.choice(files)
         file_name = f'{self.dir}{file}'
@@ -349,11 +345,11 @@ class VoiceChatCog(commands.Cog):
         user = self.bot.getUser(ctx)["playrandom"]
         user["total_uses"] += 1
         user["last_use"] = time.time()
+        self.bot.saveData()
 
         prefix = self.bot.getPrefix(ctx)
-        embed = newEmbed(description=f"**{prefix}playrandom** used by <@{ctx.user}>\n"
-                                     f"**```{file}```**")
-        await ctx.send(embed)
+        await ctx.sendEmbed(description=f"**{prefix}playrandom** used by <@{ctx.user}>\n"
+                                        f"**```{file}```**")
         await ctx.message.delete()
 
         await self.playAudio(ctx, vc, file_name)
@@ -371,15 +367,15 @@ class VoiceChatCog(commands.Cog):
     async def playPingCommand(self, ctx, old_file, new_file):
         for char in "/\\*? ":
             if char in new_file:
-                return await ctx.send(errorEmbed(f"You cannot rename the file to include '{char}' characters!"))
+                return await ctx.sendError(f"You cannot rename the file to include '{char}' characters!")
 
         files = os.listdir(self.dir)
         if len(files) == 0:
             prefix = self.bot.getPrefix(ctx)
-            return await ctx.send(errorEmbed(f"There are no files to play! Consider using {prefix}play to add some."))
+            return await ctx.sendError(f"There are no files to play! Consider using {prefix}play to add some.")
 
         if old_file not in files:
-            return await ctx.send(errorEmbed(f"That files doesn't seem to exist. Please try again."))
+            return await ctx.sendError(f"That files doesn't seem to exist. Please try again.")
 
         os.rename(self.dir + old_file, self.dir + new_file)
         await ctx.send(newEmbed(f"Successfully renamed ```{old_file}``` to ```{new_file}```"))

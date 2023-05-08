@@ -9,11 +9,9 @@ from files.wrappers import *
 from files.support import *
 
 
-
 class CogUtils(commands.Cog):
     def __init__(self, bot):
         self.bot: JerrinthBot = bot
-
 
     @commands.command(hidden=True)
     @is_jerrin
@@ -27,12 +25,11 @@ class CogUtils(commands.Cog):
             await ctx.message.add_reaction("❌")
             if self.bot.getUser(ctx).get("debug", False):
                 await ctx.send('{}: {}'.format(type(e).__name__, e))
+
     @loadCommand.error
     async def loadCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
-            await ctx.send(errorEmbed(description="Only admins can use this."))
-
-
+            await ctx.sendError("Only admins can use this.")
 
     @commands.command(hidden=True)
     @is_jerrin
@@ -46,12 +43,12 @@ class CogUtils(commands.Cog):
             await ctx.message.add_reaction("❌")
             if self.bot.getUser(ctx).get("debug", False):
                 await ctx.send('{}: {}'.format(type(e).__name__, e))
+
     @unloadCommand.error
     @ctx_wrapper
     async def unloadCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
-            await ctx.send(errorEmbed(description="Only admins can use this."))
-
+            await ctx.sendError("Only admins can use this.")
 
     @commands.command(name='reload', hidden=True)
     @is_jerrin
@@ -65,11 +62,12 @@ class CogUtils(commands.Cog):
             await ctx.message.add_reaction("❌")
             if self.bot.getUser(ctx).get("debug", False):
                 await ctx.send('{}: {}'.format(type(e).__name__, e))
+
     @reloadCommand.error
     @ctx_wrapper
     async def reloadCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
-            await ctx.send(errorEmbed(description="Only admins can use this."))
+            await ctx.sendError("Only admins can use this.")
 
 
 async def setup(bot):

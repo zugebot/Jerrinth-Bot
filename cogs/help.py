@@ -25,22 +25,20 @@ class HelpCog(commands.Cog):
             ["chat", "history"],
             ["fun", "findimg", "findseed", "eyecount", "someone", "@someone", "8ball"],
             ["leaderboard", "board", "data", "tsa", "tsi", "tsf", "tss"],
+            ["join", "leave", "play", "playrandom", "playlist", "playlist", "voice", "voicechat", "vc", "playrename"],
             ["admin", "mod", "prefix", "censor", "redirect",
              "addchannel", "delchannel", "deletechannel", "removechannel", "omni",
              "channelengine", "channeladd", "channeldel", "channeldelete", "channelremove"],
             ["other"],
         ]
 
-
         if isinstance(page, int):
             page = str(page - 1)
-        if page == "":
-            page = 0
-        elif page is None:
+        if not page:
             page = 0
         elif page.isnumeric():
-            page = int(page) - 1
-            if not (0 < page < 7):
+            page = int(page)
+            if not (0 < page < 8):
                 page = 0
         else:
             for n, arg_list in enumerate(possible_args):
@@ -63,9 +61,10 @@ class HelpCog(commands.Cog):
                           f"\n``Page 3``: Commands: Chat"
                           f"\n``Page 4``: Commands: FUN"
                           f"\n``Page 5``: Commands: Leaderboard"
-                          f"\n``Page 6``: Commands: Admin")
+                          f"\n``Page 6``: Commands: Voicechat"
+                          f"\n``Page 7``: Commands: Admin")
 
-        embed1.set_author(name="0/6 - Help Page", icon_url=ctx.author.avatar)
+        embed1.set_author(name="0/7 - Help Page", icon_url=ctx.author.avatar)
 
         embed2 = newEmbed(f"  {start}profile *id`` - meant to show all your stats!"
                           f"\n{start}channels   `` - shows a list of all usable channels in this server."
@@ -83,7 +82,7 @@ class HelpCog(commands.Cog):
                           f"\nCreated by: <@611427346099994641>"
                           f"\n__**[You can find my owner here!](https://discord.gg/vGW4pSF8wc)**__")
 
-        embed2.set_author(name="1/6 - Commands: Overview", icon_url=ctx.author.avatar)
+        embed2.set_author(name="1/7 - Commands: Overview", icon_url=ctx.author.avatar)
 
         embed3 = newEmbed(f"  {start}ai *args `` - Ask me anything!"
                           f"\n{start}solve equ`` - Will solve any non-variable problem."
@@ -94,22 +93,25 @@ class HelpCog(commands.Cog):
                           f"\n"
                           f"\n{start}whisper    `` - Upload an audio file, and I will convert it to text!"
                           f"\n{start}whisper raw`` - returns non-formatted text from the file."
-                          f"\n**{prefix}whisper** supports __mp3__, __mp4__, __mpeg__, __mpga__, __m4a__, __wav__, and __webm__ files.")
-        embed3.set_author(name="2/6 - Commands: AI", icon_url=ctx.author.avatar)
+                          f"\n**{prefix}whisper** supports __mp3__, __mp4__, __mpeg__, __mpga__, "
+                          f"__m4a__, __wav__, and __webm__ files.")
+        embed3.set_author(name="2/7 - Commands: AI", icon_url=ctx.author.avatar)
 
         embed4 = newEmbed(f"  {start}chat *msg   `` - Just like **{prefix}ai**, but with memory!"
                           f"\n{start}chat clear  `` - Clears the bot's message memory."
-                          f"\n{start}chat history`` - Shows the messages the bot remembers."
                           f"\n{start}chat prompt `` - Shows the current prompt."
                           f"\n{start}chat setprompt   *msg`` - Sets the prompt for the bot to follow."
                           f"\n{start}chat resetprompt *msg`` - Resets the prompt that bot follows. "
+                          f"\n{start}chat history`` - Sends a .json file of the chat history."
+                          f"\n{start}chat load   `` - Resets the prompt that bot follows. "
+                          f"\nTo use **,chat load**, send the .json from **,chat history**."
                           f"\n"
                           f"\n★ Chat's are per channel."
                           f"\n"
                           f"\n★ The Default prompt is: **'You are a helpful assistant.'**"
                           f"\n★ Think of the default prompt, as the main rule the bot follows"
                           f"\n★ whilst answering your questions.")
-        embed4.set_author(name="3/6 - Commands: Chat", icon_url=ctx.author.avatar)
+        embed4.set_author(name="3/7 - Commands: Chat", icon_url=ctx.author.avatar)
 
         embed5 = newEmbed(f"\n{start}findseed  `` - roll a random minecraft end portal!"
                           f"\n{start}eyecount  `` - display how many rolls you have of each eye count!"
@@ -117,7 +119,7 @@ class HelpCog(commands.Cog):
                           f"\n{start2}@someone   `` - ping a random person!"
                           f"\n{start}8ball *msg`` - ask the magical :8ball: a question!"
                           f"\n{star}  ``more coming soon.``")
-        embed5.set_author(name="4/6 - Commands: FUN", icon_url=ctx.author.avatar)
+        embed5.set_author(name="4/7 - Commands: FUN", icon_url=ctx.author.avatar)
 
         embed6 = newEmbed(f"  {start}data   `` - shows *my* overall accomplishments!"
                           f"\n{start}tsa  *n`` - leaderboard of **``{prefix}ai``** command uses."
@@ -125,9 +127,25 @@ class HelpCog(commands.Cog):
                           f"\n{start}tsf  *n`` - leaderboard of **``{prefix}findseed``** command uses."
                           f"\n{start}tspr *n`` - leaderboard of **``{prefix}playrandom``** command uses."
                           f"\n{start}tss  *n`` - leaderboard of **``@someone``** command uses.")
-        embed6.set_author(name="5/6 - Commands: Leaderboard", icon_url=ctx.author.avatar)
+        embed6.set_author(name="5/7 - Commands: Leaderboard", icon_url=ctx.author.avatar)
 
-        embed7 = newEmbed(f"**All commands here can only be used by those with admin privileges.**"
+        embed7 = newEmbed(f"  {start}join`` - joins a vc (only if you are in it)"
+                          f"\n{start}leave`` - leaves a vc (only if you are in it)"
+                          f"\n"
+                          f"\n{start}stop `` - stops the current song that is playing."
+                          f"\n{start}play `` - play a piece of media in your voicechat!"
+                          f"\n**,play** supports filenames, youtube links and discord uploads."
+                          f"\nyoutube uploads must be shorter than 15 minutes in length."
+                          f"\nall videos played using this command stays on my server for the **,playrandom** command."
+                          f"\n"
+                          f"\n{start}volume *number`` - value between 0-100. Adjusts bot volume."
+                          f"\n{start}playrandom    `` - plays a random video/audio file from my server."
+                          f"\n{start}playlist      `` - shows an interactive list of all files on my server."
+                          f"\n{start}playrename *oldname *newname`` - renames a file on my server."
+                          f"\n")
+        embed7.set_author(name="5/7 - Commands: Voicechat", icon_url=ctx.author.avatar)
+
+        embed8 = newEmbed(f"**All commands here can only be used by those with admin privileges.**"
                           f"\n"
                           f"\n_Toggleable default settings for the server._"
                           f"\n{start}setprefix prefix`` - allows changing the server bot prefix."
@@ -154,7 +172,7 @@ class HelpCog(commands.Cog):
                           f"\n{start}channelprompt *msg`` - makes all **{prefix}chat** use a custom prompt."
                           f"\n{start}channelprompt del `` - removes the channel prompt.")
 
-        embed7.set_author(name="6/6 - Commands: Admin", icon_url=ctx.author.avatar)
+        embed8.set_author(name="7/7 - Commands: Admin", icon_url=ctx.author.avatar)
 
         """
         embed8 = newEmbed(f"Last updated <t:{self.bot.settings['last_update']}>."
@@ -168,7 +186,7 @@ class HelpCog(commands.Cog):
         embed8.set_author(name="6/6 - Update Log", icon_url=ctx.author.avatar)
         """
 
-        pages = [embed1, embed2, embed3, embed4, embed5, embed6, embed7]
+        pages = [embed1, embed2, embed3, embed4, embed5, embed6, embed7, embed8]
         menu = ButtonMenu(pages, index=page, timeout=180)
         try:
             await ctx.super.send(embed=pages[page], view=menu)

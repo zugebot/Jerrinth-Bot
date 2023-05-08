@@ -4,6 +4,7 @@ from discord import Interaction
 from discord.ext.commands import CommandNotFound, CommandOnCooldown
 import datetime
 import logging
+from files.wrappers import *
 
 logging.basicConfig(level=logging.CRITICAL)
 
@@ -177,8 +178,8 @@ async def on_command_error(ctx, error):
         return
     if isinstance(error, discord.errors.Forbidden):
         return
-    print(f"Server: {None}")
-    print(f"User: {ctx.user}")
+    # print(f"Server: {None}")
+    # print(f"User: {ctx.user}")
     print(f"User Message: '{ctx.message.content}'")
     raise error
 

@@ -10,14 +10,16 @@ from files.jerrinth import JerrinthBot
 from files.wrappers import *
 from files.support import *
 from cogs.help import HelpCog
-# from cogs.chat import ChatCog
+
 from files.config import *
 
+from funcs.memory import Memory
 from funcs.moderation import testModeration
 
 
-class ChatCog(commands.Cog):
+class ChatCog(commands.Cog, Memory):
     def __init__(self, bot):
+        super().__init__(bot)
         self.bot: JerrinthBot = bot
 
     def ensureUserAIExists(self, ctx):
@@ -39,12 +41,23 @@ class ChatCog(commands.Cog):
 
         if ctx.message.attachments:
             for attachment in ctx.message.attachments:
-                if attachment.content_type == "text/plain; charset=utf-8":
+                print(attachment.content_type)
+                content_types = attachment.content_type.split("; ")
+                b1 = "text" in content_types[0]
+                b2 = "application/json" == content_types[0]
+                b3 = "charset=utf-8" == content_types[1]
+                if (b1 or b2) and b3:
                     max_size = self.bot.settings["max-text-file-size"]
                     if attachment.size > max_size:
-                        return await ctx.send(f"File size exceeds the maximum allowed size of {max_size} letters.")
+                        await ctx.sendError(f"File size exceeds the maximum allowed size of {max_size} characters."
+                                            f"\nI will ignore `{attachment.filename}`.")
+                        continue
                     text_file = io.StringIO(str(await attachment.read()))
                     user_input += f"\n\nFilename:{attachment.filename}\n{text_file.getvalue().strip()}"
+                # else:
+                    # print(attachment.content_type)
+        # else:
+            # print("no attachments")
 
         args = user_input.split()
 
@@ -53,26 +66,29 @@ class ChatCog(commands.Cog):
         if args[0] == "help":
             return await HelpCog.displayHelpCommand(self, ctx, page=4)
 
+        if args[0] == "load":
+            return await self.loadChatHistory(ctx)
         if args[0] == "forget":
             amount = 1 if len(args) == 1 else args[1]
-            return await self.forgetChatHistory(ctx, amount)
+            return await self.forgetChatHistory(ctx, amount + 1)
         if args[0] == "clear":
-            return await self.chatResetHistory(ctx)
+            return await self.resetChatHistory(ctx)
         if args[0] == "history":
-            return await self.chatViewHistory(ctx)
+            return await self.viewChatHistory(ctx)
+        if args[0] in ["token", "tokens"]:
+            return await ctx.sendEmbed(f"**Current Token Size:** {self.get_history_token_size(ctx)}")
         elif args[0] == "prompt":
-            return await self.chatShowPrompt(ctx)
+            return await ctx.sendEmbed(self.get_chat_prompt(ctx), title="Current Prompt")
         elif f"{args[0]}.txt" in self.bot.ai_prompts:
-            self._setPersonChatPrompt(ctx, args[0])
-            embed = newEmbed(f"Activated ***{args[0].capitalize()} Mode!***")
-            return await ctx.send(embed)
+            self.set_person_chat_prompt(ctx, args[0])
+            return await ctx.sendEmbed(f"Activated ***{args[0].capitalize()} Mode!***")
         elif args[0] == "resetprompt":
             await self.chatResetSystemMessage(ctx)
-            return await self.chatResetHistory(ctx)
+            return await self.resetChatHistory(ctx)
         elif args[0] == "setprompt":
             if len(args) > 1:
                 await self.chatSetSystemMessage(ctx, ' '.join(args[1:]))
-                return await self.chatResetHistory(ctx)
+                return await self.resetChatHistory(ctx)
         self.bot.saveData()
 
         prefix = self.bot.getPrefix(ctx)
@@ -101,9 +117,9 @@ class ChatCog(commands.Cog):
 
             """HERE WE CONSTRUCT THE DATA"""
             logging.info("parses data for memory")
-            temp_data = deepcopy(self._getChatHistory(ctx))
+            temp_data = deepcopy(self.get_chat_history(ctx))
             temp_data.append({"role": "user", "content": user_input})
-            temp_data = self.handleResizingMemory(ctx, temp_data)
+            temp_data = self.handle_resizing_memory(ctx, temp_data)
 
             """GET FORMATTED RESPONSE"""
             logging.info("getting chat message!!!!")
@@ -111,9 +127,8 @@ class ChatCog(commands.Cog):
             try:
                 response = response_dict['choices'][0]['message']['content']
             except Exception as e:
-                embed = errorEmbed(
-                    f"Something went wrong, Jerrin is working on a fix!\nError: {e}\n{str(response_dict)}")
-                return await ctx.send(embed)
+                return await ctx.sendError(f"Something went wrong, Jerrin is working on a fix!\n"
+                                           f"Error: {e}\n{str(response_dict)}")
 
             response = filterGarbage(response)
 
@@ -126,10 +141,9 @@ class ChatCog(commands.Cog):
                 user["prompt_tokens"] += response_dict["usage"]["prompt_tokens"]
                 user["completion_tokens"] += response_dict["usage"]["completion_tokens"]
                 user["total_tokens"] += response_dict["usage"]["total_tokens"]
-            except:
+            except Exception as e:
                 print("Error updating user data")
-                embed = errorEmbed("Please try again!\nAn unknown error occurred.")
-                return await ctx.send(embed)
+                return await ctx.sendError(f"Please try again!\nAn unknown error occurred.\nError: {e}")
             self.bot.saveData()
 
             """CODE THAT DEALS WITH CENSORING THE INPUT/OUTPUT"""
@@ -139,10 +153,10 @@ class ChatCog(commands.Cog):
                 return
 
             """UPDATES MESSAGE HISTORY OF CHATTING, IF THEY ARE USING THAT"""
-            self._addChatUser(ctx, user_input)
-            self._addChatAssistant(ctx, response)
+            self.add_chat_user(ctx, user_input)
+            self.add_chat_assistant(ctx, response)
             self.bot.saveData()
-            self.handleResizingMemory(ctx)
+            self.handle_resizing_memory(ctx)
 
             """SEND THE RESULTS"""
             logging.info("sending results")
@@ -157,93 +171,11 @@ class ChatCog(commands.Cog):
     async def ChatCommandError(self, ctx, error):
         pass
 
-    def _countTokens(self, text):
-        return len(self.bot.ai.encoding.encode(text))
-
-    def _getChatPrompt(self, ctx):
-        # gcode
-        return self.bot.getChannel(ctx).get("chatgpt-system-message",
-                                            "You are a helpful discord chatbot, named Alex. You are not "
-                                            "allowed to refer to yourself as a machine learning model, or as a AI "
-                                            "language model. If you are tempted to, just don't write that sentence "
-                                            "involving stating it. "
-                                            "\n"
-                                            "Every message I send will start like this: 'USER: MESSAGE', where USER is "
-                                            "the discord username of the person who sent the message. Whenever the "
-                                            "user talks about themselves, I want you to relate that information to "
-                                            "their name. Feel free to mention them in every message. The way you do "
-                                            "this, is by sending '<@NUMBER> '. "
-                                            "\n"
-                                            "If your messages involve answering general questions, but is not related "
-                                            "to math/coding, I want you to add emojis to your response; they should "
-                                            "relate to the content of your message. Try to not use the same emojis "
-                                            "every message."
-                                            "\n"
-                                            "Whenever a user asks you to write code, I want you to surround code in "
-                                            "your response with symbols that look like this:"
-                                            "\n"
-                                            "```LANGUAGE\nCODE``` "
-                                            "\n"
-                                            "where 'CODE' is the code you plan to send, and 'LANGUAGE' is a "
-                                            "lowercase string that is the language of the code you are responding "
-                                            "with. Do not assume they want you to write code unless they explicitly "
-                                            "ask for it."
-                                            "\n"
-                                            "If you are asked something involving solving "
-                                            "mathematics, you must "
-                                            "go step by step, and explain each step, and format any line of math, "
-                                            "denoted as MATH, to look like this:"
-                                            "\n1. add '```gcode'"
-                                            "\n2. add MATH"
-                                            "\n3. add '```'"
-                                            "\nwhich looks like this: ```gcode\nMATH```. "
-                                            "You should always add the 'gcode' to the content, regardless of how the "
-                                            "user formats their message. There cannot be a space between "
-                                            "'```' and 'gcode'."
-                                            "where 'MATH' is the math that you planned to say in that step. ")
-
-    def _setPersonChatPrompt(self, ctx, name):
-        with open(f"data/prompts/{name}.txt", "r", encoding='utf-8') as f:
-            self.bot.getChannel(ctx)["chatgpt-system-message"] = f.read()
-
-    def _getChatHistory(self, ctx) -> list:
-        data = self.bot.getChannel(ctx).get("chatgpt-content", [None])
-        data[0] = {"role": "system", "content": self._getChatPrompt(ctx)}
-        return data
-
-    def _addChatUser(self, ctx, content):
-        data = self._getChatHistory(ctx)
-        data.append({"role": "user", "content": content})
-        self.bot.getChannel(ctx)["chatgpt-content"] = data
-
-    def _addChatAssistant(self, ctx, content):
-        data = self._getChatHistory(ctx)
-        data.append({"role": "assistant", "content": content})
-        self.bot.getChannel(ctx)["chatgpt-content"] = data
-
-    def _getHistoryTokenSize(self, ctx, data=None):
-        if data is None:
-            data = self._getChatHistory(ctx)
-        token_count = [0] * len(data)
-
-        for index, content in enumerate(data):
-            token_count[index] = self._countTokens(content["content"])
-
-        total = sum(token_count)
-        print("History Tokens:", total, token_count)
-
-        return total
-
-    def _resetChatHistory(self, ctx):
-        if "chatgpt-content" in self.bot.getChannel(ctx):
-            del self.bot.getChannel(ctx)["chatgpt-content"]
-
     async def forgetChatHistory(self, ctx, amount: int = 1):
         history = self.bot.getChannel(ctx).get("chatgpt-content", [])
 
         if len(history) < 2:
-            embed = errorEmbed("There is nothing to forget silly!")
-            return await ctx.send(embed)
+            return await ctx.sendError("There is nothing to forget silly!")
 
         amount = int(amount)
         for a in range(amount):
@@ -252,90 +184,58 @@ class ChatCog(commands.Cog):
             history.pop(-1)
         self.bot.getChannel(ctx)["chatgpt-content"] = history
 
-        embed = newEmbed(f"Removed {amount} messages from my memory of this channel!")
-        await ctx.send(embed)
+        await ctx.sendEmbed(f"Removed {amount} messages from my memory of this channel!")
 
-    def handleResizingMemory(self, ctx, temp_data=None):
-        if temp_data is None:
-            data = self._getChatHistory(ctx)
-        else:
-            data = temp_data
+    async def loadChatHistory(self, ctx):
+        if not ctx.message.attachments:
+            return await ctx.sendError("BLANK")
 
-        token_count = [0] * len(data)
-        for index, content in enumerate(data):
-            token_count[index] = self._countTokens(content["content"])
+        for attachment in ctx.message.attachments:
+            filename = attachment.filename
+            if filename != "message_history.json":
+                continue
+            text_file = io.BytesIO(await attachment.read())
+            str_data = text_file.getvalue().decode('utf-8')
+            json_data = json.loads(str_data)
 
-        to_remove = 0
-        while sum(token_count) > 3900:
-            to_remove += 1
-            token_count.pop(0)
-
-        while to_remove > 0:
-            to_remove -= 1
-            data.pop(1)
-
-        if temp_data is None:
-            self.bot.getChannel(ctx)["chatgpt-content"] = data
+            self.bot.getChannel(ctx)["chatgpt-content"] = json_data
             self.bot.saveData()
+            await ctx.sendEmbed("Successfully loaded our previous conversation!")
+            break
         else:
-            return data
+            prefix = self.bot.getPrefix(ctx)
+            await ctx.sendError(f"You didn't send any files called `message_history.json`."
+                                f"\nYou can get this file by using `{prefix}chat history`.")
 
-    async def chatViewHistory(self, ctx):
-        data = self._getChatHistory(ctx)
 
+    async def viewChatHistory(self, ctx):
+        data = self.get_chat_history(ctx)
         if len(data) > 1:
-            content = f"Prompt: {data[0]['content']}\n\n"
-            for message in data[1:]:
-                content += f"{message['role'].ljust(9)} # {message['content']}\n"
-
-            with open("data/message_history.txt", "w") as file:
-                file.write(content)
-
-            with open("data/message_history.txt", "rb") as file:
-                await ctx.super.send("**Message History:**", file=discord.File(file, "data/message_history.txt"))
-
+            file = io.BytesIO(json.dumps(data).encode('utf-8'))
+            await ctx.send("This is my message history!", file=discord.File(file, "message_history.json"))
         else:
-            embed = errorEmbed("There is no prior message history in this channel.")
-            return await ctx.send(embed)
+            await ctx.sendError("There is no prior message history in this channel.")
 
-        # embed.description = desc
-        # await ctx.send(embed)
-
-    async def chatResetHistory(self, ctx):
-        self._resetChatHistory(ctx)
+    async def resetChatHistory(self, ctx):
+        self.reset_chat_history(ctx)
         self.bot.saveData()
-        embed = newEmbed("I have cleared my history!")
-        await ctx.send(embed)
+        await ctx.sendEmbed("I have cleared my history!")
 
     async def chatResetSystemMessage(self, ctx):
         if "chatgpt-system-message" in self.bot.getChannel(ctx):
             del self.bot.getChannel(ctx)["chatgpt-system-message"]
-            await ctx.send(newEmbed(f"I have reset the system prompt to:\n**{self._getChatPrompt(ctx)}**"))
+            await ctx.send(newEmbed(f"I have reset the system prompt to:\n**{self.get_chat_prompt(ctx)}**"))
         else:
-            return await ctx.send(errorEmbed(f"My prompt is already:\n**{self._getChatPrompt(ctx)}**"))
+            return await ctx.sendError(f"My prompt is already:\n**{self.get_chat_prompt(ctx)}**")
 
     async def chatSetSystemMessage(self, ctx, content):
         if not content:
-            embed = errorEmbed("Cannot set the system prompt to an empty message!")
-            return await ctx.send(embed)
+            return await ctx.sendError("Cannot set the system prompt to an empty message!")
 
-        self.bot.getChannel(ctx)["chatgpt-system-message"] = content
-        embed = newEmbed(f"Set system prompt to: \n**{content}**")
-        await ctx.send(embed)
+        content = self.bot.getChannel(ctx).get("chatgpt-system-message", None)
+        await ctx.sendEmbed(f"Set system prompt to: \n**{content}**")
 
-    @channel_redirect
-    async def chatShowPrompt(self, ctx):
-        embed = newEmbed(title="Current Prompt")
-        embed.description = self._getChatPrompt(ctx)
-        await ctx.send(embed)
 
-    @commands.command(name="chattokens")
-    @ctx_wrapper
-    @channel_redirect
-    async def chatShowTokens(self, ctx):
-        token_count = self._getHistoryTokenSize(ctx)
-        embed = newEmbed(f"**Current Token Size:** {token_count}")
-        await ctx.send(embed)
 
 
 async def setup(bot):

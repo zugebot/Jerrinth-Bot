@@ -1,7 +1,7 @@
 # Jerrin Shirks
 
 # native imports
-from pyparsing import ParseException # ,solve
+from pyparsing import ParseException  # for ,solve
 import time
 import io
 
@@ -11,24 +11,23 @@ from files.wrappers import *
 from files.support import *
 from files.config import *
 
+from funcs.memory import Memory
+
 from cogs.help import HelpCog
 from cogs.chat import ChatCog
-# from cogs.chat import ChatCog
-
 
 from funcs.moderation import testModeration
 
 
-class AICog(commands.Cog):
+class AICog(commands.Cog, Memory):
     def __init__(self, bot):
+        super().__init__(bot)
         self.bot: JerrinthBot = bot
-
 
     def ensureUserAIExists(self, ctx):
         self.bot.ensureUserExists(ctx)
         if self.bot.getUser(ctx).get("ai", None) is None:
             self.bot.getUser(ctx)["ai"] = EMPTY_AI.copy()
-
 
     @commands.command(name="ai", aliases=['AI', 'Ai', "aI"])
     @discord.ext.commands.cooldown(*AI_COOLDOWN)
@@ -48,12 +47,11 @@ class AICog(commands.Cog):
                     text_file = io.StringIO(str(await attachment.read()))
                     TEXT += f"\n\nFile:\n{text_file.getvalue().strip()}"
 
-
         """IF IT IS AN EMPTY MESSAGE BRING UP HELP DIALOG"""
         prefix = self.bot.getPrefix(ctx)
         if ctx.super.message.content.lower().strip() in [f"{prefix}ai", f"{prefix}ai help"]:
             return await HelpCog.displayAIHelpCommand(self, ctx)
-        
+
         self.ensureUserAIExists(ctx)
         self.bot.ensureChannelExists(ctx)
 
@@ -65,12 +63,10 @@ class AICog(commands.Cog):
         else:  # if the channel has a forced engine, use that one instead
             ENGINE = forced_engine
 
-
         """DOES CHATTING INSTEAD OF AI'ING OR SOMETHING"""
         if self.bot.ai.engines[ENGINE] == "gpt-3.5-turbo":
             return await ChatCog.chatCommand(None, ctx)
             # return await self.chatCommand(ctx)
-
 
         """PARSES RANDOM TYPE"""
         # gets "r=0", "r=1", "r=0.N"
@@ -129,10 +125,8 @@ class AICog(commands.Cog):
                 user["total_tokens"] += response_dict["usage"]["total_tokens"]
             except:
                 print("Error updating user data")
-                embed = errorEmbed("Please try again!\nAn unknown error occurred.")
-                return await ctx.send(embed)
+                return await ctx.sendError("Please try again!\nAn unknown error occurred.")
             self.bot.saveData()
-
 
             # 10%
             # censor the response
@@ -144,6 +138,9 @@ class AICog(commands.Cog):
 
             """UPDATES MESSAGE HISTORY OF CHATTING, IF THEY ARE USING THAT"""
             # code here
+            self.add_chat_user(ctx, TEXT)
+            self.add_chat_assistant(ctx, response)
+            self.bot.saveData()
 
             """SEND THE RESULTS"""
             if FORMAT in ["T", "C"]:
@@ -176,7 +173,6 @@ class AICog(commands.Cog):
             else:
                 await ctx.super.message.add_reaction(convertDecimalToClock(error.retry_after / AI_COOLDOWN[1]))
 
-
     # need to rewrite for admin
     @commands.command(name="engine", aliases=['e', 'engines', 'setengine'])
     @ctx_wrapper
@@ -196,10 +192,10 @@ class AICog(commands.Cog):
             if 0 <= new_engine < length:
                 self.bot.getUser(ctx)["ai"]["engine"] = new_engine
                 self.bot.saveData()
-                embed = newEmbed(f"Successfully set engine to **{engines[new_engine]}**")
+                await ctx.sendEmbed(f"Successfully set engine to **{engines[new_engine]}**")
             else:
-                embed = errorEmbed(f"That is an invalid engine! Please choose a number between 1 and {length}.")
-            return await ctx.send(embed)
+                await ctx.sendError(f"That is an invalid engine! Please choose a number between 1 and {length}.")
+            return
 
         embed = newEmbed()
 
@@ -220,7 +216,8 @@ class AICog(commands.Cog):
                                 inline=False,
                                 value=f"To change engines, use **,engine N**\n"
                                       f"Where N is the index of the engine list.\n"
-                                      f"[Learn more about engine choices here!](https://beta.openai.com/docs/models/overview)\n"
+                                      f"[Learn more about engine choices here!]("
+                                      f"https://beta.openai.com/docs/models/overview)\n"
                                       f"_Turn this off by using **{prefix}toggleenginehelp**_")
 
             embed.add_field(name="Engine List",
@@ -247,8 +244,7 @@ class AICog(commands.Cog):
         async with ctx.super.channel.typing():
 
             if args == ():
-                embed = errorEmbed("You must give me something to solve!")
-                await ctx.send(embed)
+                await ctx.sendError("You must give me something to solve!")
 
             try:
                 if expression.replace(" ", "") in ["9+10", "9+(10)", "(9)+10"]:
@@ -273,12 +269,10 @@ class AICog(commands.Cog):
                 if "." not in expression and str(answer).endswith(".0"):
                     answer = int(answer)
 
-                embed = newEmbed(f"**{answer}**")
-                await ctx.send(embed)
+                await ctx.sendEmbed(f"**{answer}**")
 
             except OverflowError:
-                embed = errorEmbed("Not much to say here.", title="Overflow Error")
-                await ctx.send(embed)
+                await ctx.sendError("Not much to say here.", title="Overflow Error")
 
             except ParseException as e:
                 embed = errorEmbed(title="Parsing Error")
@@ -291,11 +285,10 @@ class AICog(commands.Cog):
                 await ctx.send(embed)
 
             except ZeroDivisionError:
-                embed = errorEmbed("Ya can't do that!", title="Zero Division Error")
-                await ctx.send(embed)
+                await ctx.sendError("Ya can't do that!", title="Zero Division Error")
 
             except Exception as e:
-                embed = trophyEmbed(e, title="The answer is definitely 42.")
+                embed = trophyEmbed(str(e), title="The answer is definitely 42.")
                 await ctx.send(embed)
 
     @solveEquationCommand.error
@@ -303,9 +296,6 @@ class AICog(commands.Cog):
     @cool_down_error
     async def solveEquationCommandError(self, ctx, error):
         pass
-
-
-
 
     @commands.command(name="autocomplete", aliases=["toggleautocomplete", "tac"])
     @ctx_wrapper
@@ -318,9 +308,7 @@ class AICog(commands.Cog):
         value = toggleDictBool(self.bot.getUser(ctx)["ai"], "autocomplete", False)
         self.bot.saveData()
 
-        embed = newEmbed(f"Set Autocomplete Mode for <@{ctx.user}> to **{not value}**!")
-        await ctx.send(embed)
-
+        await ctx.sendEmbed(f"Set Autocomplete Mode for <@{ctx.user}> to **{not value}**!")
 
     @commands.command(name="aifooter", aliases=["af"])
     @ctx_wrapper
@@ -333,9 +321,7 @@ class AICog(commands.Cog):
         value = toggleDictBool(self.bot.getUser(ctx)["ai"], "show_footer", False)
         self.bot.saveData()
 
-        embed = newEmbed(f"The AI Embed Footer for <@{ctx.user}> has been toggled to **{not value}**!")
-        await ctx.send(embed)
-
+        await ctx.sendEmbed(f"The AI Embed Footer for <@{ctx.user}> has been toggled to **{not value}**!")
 
     @commands.command(name="toggleenginehelp", aliases=["teh"])
     @ctx_wrapper
@@ -348,23 +334,7 @@ class AICog(commands.Cog):
         value = toggleDictBool(self.bot.getUser(ctx)["ai"], "show_engine_help", True)
         self.bot.saveData()
 
-        embed = newEmbed(f"Engine Help for <@{ctx.user}> has been toggled to **{not value}**!")
-        await ctx.send(embed)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        await ctx.sendEmbed(f"Engine Help for <@{ctx.user}> has been toggled to **{not value}**!")
 
 
 async def setup(bot):

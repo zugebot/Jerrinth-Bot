@@ -75,8 +75,7 @@ class WhisperCog(commands.Cog):
     @channel_redirect
     async def whisperCommand(self, ctx, var=""):
         if not ctx.message.attachments:
-            embed = errorEmbed("You must send an audio file!")
-            return await ctx.send(embed)
+            return await ctx.sendError("You must send an audio file!")
 
         format_text, total_steps = [(True, 4), (False, 3)][var.lower() == "raw"]
 
@@ -85,8 +84,7 @@ class WhisperCog(commands.Cog):
             status, reason = self.isValidFile(ctx, attachment)
 
             if not status:
-                embed = errorEmbed(reason)
-                return await ctx.send(embed)
+                return await ctx.sendError(reason)
 
             else:
                 step = 1
@@ -152,8 +150,7 @@ class WhisperCog(commands.Cog):
                 # fail code
                 except Exception as e:
                     print(e)
-                    embed = errorEmbed(f"Whisper failed! Reason:\n{e}")
-                    await message.edit(embed=embed)
+                    await message.edit(embed=errorEmbed(f"Whisper failed! Reason:\n{e}"))
                     if file_saved:
                         await self.delete_file(filename)
 
