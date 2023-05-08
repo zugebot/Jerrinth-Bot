@@ -1,8 +1,6 @@
-venv/
-.idea/
-__pycache__/
-data/
-taunt_alexis.py
+/bin/
+/data/
+/venv/
 script.py
-count_lines_of_code.py
-message_history.txt
+.idea/
+cogs/__pycache__/

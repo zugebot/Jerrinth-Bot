@@ -1,17 +1,17 @@
 # Jerrin Shirks
 
 # native imports
-from discord.ext import commands
 
 # custom imports
-from wrappers import *
-from support import *
+from files.wrappers import *
+from files.support import *
+from files.jerrinth import JerrinthBot
 
 
 
 class ChannelsCog(commands.Cog):
     def __init__(self, bot):
-        self.bot = bot
+        self.bot: JerrinthBot = bot
 
 
     @commands.command(name="channelengine", aliases=["ce"])
@@ -60,17 +60,6 @@ class ChannelsCog(commands.Cog):
         channel = argParsePing(channel, excluded=["all"])
         ctx.updateChannel(channel)
 
-        if channel == "all":
-            guild = self.bot.get_guild(ctx.serverInt)
-
-            for channel_iter in guild.text_channels:
-                ctx.updateChannel(channel_iter.id)
-                self.bot.ensureChannelExists(ctx)
-
-            self.bot.saveData()
-            embed = newEmbed(f"The bot is now limitless!\n*You can use me in all channels.*")
-            return await ctx.send(embed, reference=True)
-
         status = self.bot.ensureChannelExists(ctx)
         if status:
             desc = f"I now watch over <#{ctx.channel}>!"
@@ -92,7 +81,8 @@ class ChannelsCog(commands.Cog):
         ctx.updateChannel(channel)
 
         if channel == "all":
-            self.bot.data[ctx.server]["channels"] = {}
+            self.bot.getServer(ctx)["usable_everywhere"] = False
+            self.bot.data["servers"][ctx.server]["channels"] = {}
             self.bot.saveData()
             embed = newEmbed(f"All channels have been disabled from my usage.")
             return await ctx.send(embed, reference=True)
@@ -115,24 +105,49 @@ class ChannelsCog(commands.Cog):
     @ctx_wrapper
     async def channelsCommand(self, ctx, redirect=False):
         self.bot.ensureServerExists(ctx)
-
-        prefix = self.bot.data[ctx.server]["prefix"]
+        server = self.bot.getServer(ctx)
+        prefix = self.bot.getPrefix(ctx)
         channels = self.bot.getChannelDict(ctx)
         embed = newEmbed(title="Channel List")
 
+        if server.get("usable_everywhere", False):
+            return await ctx.send(newEmbed(f"**No need to list channels, for I am usable in all!**\n"
+                                           f"If you want to turn this off, use {prefix}omni"))
+
+
+        field_title = "Channels" if channels else "Channels Usable (Empty!)"
+
         # if it is being called from another function
         if redirect:
-            embed.description = "You cannot use that command in this channel.\nPlease navigate to one of the below channels."
+            embed.description = "You cannot use that command in this channel.\n" \
+                                "Please navigate to one of the below channels."
         else:
             embed.description = "These are places you can use my commands!"
+
+        text = ""
         if channels:
-            items = ", ".join([f"<#{channel}>" for channel in channels])
-            embed.add_field(name="Channels", inline=False, value=items)
-        else:
-            value = f"Have an admin add a channel using **{prefix}addchannel**"
-            embed.add_field(name="Channels Usable (Empty!)", inline=False, value=value)
+            text = ", ".join([f"<#{channel}>" for channel in channels])
+        text = f"{text}Have an admin add a channel using **{prefix}addchannel**\n"
+        text = f"{text}Admins can also add all channels using **{prefix}omni**"
+        embed.add_field(name=field_title, inline=False, value=text)
 
         await ctx.send(embed, reference=True)
+
+
+    @commands.command(name="omni", aliases=["OMNI", "Omni"])
+    @ctx_wrapper
+    async def addAllChannels(self, ctx):
+        server = self.bot.getServer(ctx)
+        prefix = self.bot.getPrefix(ctx)
+        toggleDictBool(server, "usable_everywhere", False)
+        if server.get("usable_everywhere"):
+            description = "***You can now use me in all text channels!***"
+        else:
+            description = f"**I can now only use channels that were added using the {prefix}addchannel.**"
+
+        embed = newEmbed(description)
+        await ctx.send(embed)
+
 
 
 async def setup(bot):

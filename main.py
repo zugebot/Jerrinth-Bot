@@ -1,26 +1,22 @@
 # Jerrin Shirks
 # native imports
 from discord import Interaction
-from discord.ext import tasks
 from discord.ext.commands import CommandNotFound, CommandOnCooldown
 import datetime
+import logging
+
+logging.basicConfig(level=logging.CRITICAL)
 
 # custom imports
-from jerrinth import JerrinthBot
+from files.jerrinth import JerrinthBot
 from funcs.handle_dms import *
-from wrappers import *
-from support import *
-from config import *
-
+from files.support import *
+from files.config import *
 
 Jerrinth = JerrinthBot(data_version=1,
                        debug=DEBUG,
                        maintenance=MAINTENANCE,
                        direct_message=DIRECT_MESSAGES)
-
-
-
-
 
 
 @Jerrinth.event
@@ -48,7 +44,6 @@ async def on_guild_join(guild: discord.Guild):
     await private_log.send(embed=embed)
 
 
-
 @Jerrinth.event
 async def on_guild_remove(guild: discord.Guild):
     await Jerrinth.wait_until_ready()
@@ -67,13 +62,8 @@ async def on_guild_remove(guild: discord.Guild):
     await private_log.send(embed=embed)
 
 
-
-
-
 @Jerrinth.event
 async def on_member_join(member) -> None:
-
-
     """If someone joins my main server, ping them and try to get them to stay lol"""
     if member.guild.id == Jerrinth.settings["server_main"]:
         channel = Jerrinth.get_channel(970214072052240424)
@@ -89,6 +79,7 @@ async def on_raw_reaction_add(payload):
         if str(payload.emoji) == emoji:
             role = discord.utils.get(payload.member.guild.roles, name=role)
             await payload.member.add_roles(role)
+
     if payload.message_id == 1060741442240266330:
         await addRole("✅", "Daily Fact Enjoyer")
         await addRole("🤖", "Bot Update Enjoyer")
@@ -104,13 +95,13 @@ async def on_raw_reaction_remove(payload):
             member = discord.utils.find(lambda m: m.id == payload.user_id, _guild.members)
             if member is not None:
                 await member.remove_roles(role)
+
     guild = discord.utils.find(lambda g: g.id == payload.guild_id, Jerrinth.guilds)
     if payload.message_id == 1060741442240266330:
         await removeRole(guild, "✅", "Daily Fact Enjoyer")
         await removeRole(guild, "🤖", "Bot Update Enjoyer")
         await removeRole(guild, "🚗", "Random Ping Enjoyer")
         await removeRole(guild, "⏰", "Jerrin Video Enjoyer")
-
 
 
 @Jerrinth.event
@@ -125,11 +116,9 @@ async def on_message(message: discord.Message) -> None:
     if Jerrinth.maintenance:
         if ctx.server != "1048372362900410408":
             if message.content.startswith(","):
-                return # await message.reply("I am down for maintenance right now.")
-
+                return
 
     text = ctx.message.content.lower().replace(" ", "")
-
 
     # prevent collision with another bot
     if "heypeter" in text:
@@ -143,12 +132,10 @@ async def on_message(message: discord.Message) -> None:
         if message.channel.id == 1057516665992134777:
             return await handleSendingDMs(Jerrinth, ctx, message)
 
-
     Jerrinth.ensureServerExists(ctx)
 
     if Jerrinth.debug == (ctx.server != "1048372362900410408"):
         return
-
 
     if "bassproshop" in text:
         await ctx.message.add_reaction(random.choice(FISH))
@@ -175,12 +162,11 @@ async def on_message(message: discord.Message) -> None:
     await Jerrinth.process_commands(message)
 
 
-
 # https://discord.com/developers/active-developer
 @Jerrinth.tree.command()
 async def ping(interaction: Interaction) -> None:
     """ Displays my ping! """
-    await interaction.response.send_message("Pong! **{:.0f}**ms".format(Jerrinth.latency*1000))
+    await interaction.response.send_message("Pong! **{:.0f}**ms".format(Jerrinth.latency * 1000))
 
 
 @Jerrinth.event
@@ -191,7 +177,9 @@ async def on_command_error(ctx, error):
         return
     if isinstance(error, discord.errors.Forbidden):
         return
-    print(ctx.message.content)
+    print(f"Server: {None}")
+    print(f"User: {ctx.user}")
+    print(f"User Message: '{ctx.message.content}'")
     raise error
 
 
@@ -202,9 +190,9 @@ async def on_ready() -> None:
     Loads all cogs, and prints startup message to console.
     Prepares the Imgur library.
     """
-    await Jerrinth.imgur.loadRandomImages()
+    # await Jerrinth.imgur.loadRandomImages()
 
-    for filename in os.listdir("cogs"):
+    for filename in os.listdir(Jerrinth.directory + "cogs"):
         if filename.endswith(".py"):
             await Jerrinth.load_extension(f"cogs.{filename[:-3]}")
             print(f"loaded cogs.{filename[:-3]}")

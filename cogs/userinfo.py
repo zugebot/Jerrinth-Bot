@@ -1,12 +1,11 @@
 # Jerrin Shirks
 
 # native imports
-from discord.ext import commands
 
 # custom imports
-from jerrinth import JerrinthBot
-from wrappers import *
-from support import *
+from files.jerrinth import JerrinthBot
+from files.wrappers import *
+from files.support import *
 
 
 
@@ -116,7 +115,9 @@ class UserInfoCog(commands.Cog):
             ("ai", f"{prefix}ai"),
             ("imgur", f"{prefix}findimg"),
             ("findseed", f"{prefix}findseed"),
-            ("@someone", f"@someone")
+            ("playrandom", f"{prefix}playrandom"),
+            ("@someone", f"@someone"),
+            ("whisper", f"{prefix}whisper")
         ]
 
         data = []

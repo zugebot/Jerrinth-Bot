@@ -1,14 +1,13 @@
 # Jerrin Shirks
-
+import discord
 # native imports
-from discord.ext import commands
 import datetime
 
 # custom imports
-from jerrinth import JerrinthBot
-from config import *
-from wrappers import *
-from wrappers import *
+from files.jerrinth import JerrinthBot
+from files.config import *
+from files.wrappers import *
+from files.wrappers import *
 
 
 
@@ -64,8 +63,8 @@ class AdminCog(commands.Cog):
             if guild is None:
                 continue
 
-            if str(server_id) in self.bot.data:
-                self.bot.data[str(server_id)]["name"] = guild.name
+            if str(server_id) in self.bot.data["servers"]:
+                self.bot.data["servers"][str(server_id)]["name"] = guild.name
                 print(f"{server_id} found! {guild.name}")
             else:
                 print(f"{server_id} not in data? {guild.name}")
@@ -115,7 +114,7 @@ class AdminCog(commands.Cog):
             return await ctx.send("You must specify the new prefix!")
 
         self.bot.command_prefix = self.bot.getPrefixes
-        self.bot.data[ctx.server]["prefix"] = args[0]
+        self.bot.getServer(ctx)["prefix"] = args[0]
         self.bot.saveData()
 
         await ctx.message.add_reaction("✅")
@@ -265,6 +264,87 @@ class AdminCog(commands.Cog):
 
         embed = newEmbed(f"Set debug mode for <@{ctx.user}> to **{not value}**!")
         await ctx.send(embed)
+
+
+    @commands.command(name="blacklist", aliases=["bl"])
+    @ctx_wrapper
+    @is_jerrin
+    async def blacklistUserCommand(self, ctx, user=None):
+        user = argParsePing(user)
+        ctx.updateUser(user)
+
+        if ctx.user in self.bot.banned_users:
+            embed = errorEmbed(f"<@{ctx.user}> is already blacklisted.")
+
+            return await ctx.send(embed)
+
+        self.bot.banned_users[ctx.user] = True
+        self.bot.saveBannedUsers()
+
+        embed = newEmbed(f"<@{ctx.user}> has been blacklisted.", discord.Color.green())
+        await ctx.send(embed)
+
+    @blacklistUserCommand.error
+    async def blacklistUserCommandError(self, ctx, error):
+        if isinstance(error, commands.errors.MissingPermissions):
+            await ctx.send("How did you even find this command?")
+
+
+
+    @commands.command(name="whitelist", aliases=["wl"])
+    @ctx_wrapper
+    @is_jerrin
+    async def whitelistUserCommand(self, ctx, user=None):
+        user = argParsePing(user)
+        ctx.updateUser(user)
+
+        if ctx.user not in self.bot.banned_users:
+            embed = errorEmbed(f"<@{ctx.user}> is already whitelisted.")
+            return await ctx.send(embed)
+
+        del self.bot.banned_users[ctx.user]
+        self.bot.saveBannedUsers()
+
+        embed = newEmbed(f"<@{ctx.user}> has been whitelisted.", discord.Color.green())
+        await ctx.send(embed)
+
+    @whitelistUserCommand.error
+    async def whitelistUserCommandError(self, ctx, error):
+        if isinstance(error, commands.errors.MissingPermissions):
+            await ctx.send("How did you even find this command?")
+
+
+    @commands.command(name="set_data")
+    @ctx_wrapper
+    @is_jerrin
+    async def setDataCommand(self, ctx, server, user_id, data_type, key, value):
+        if data_type not in self.bot.data["servers"][server]["users"][user_id]:
+            self.bot.data["servers"][server]["users"][user_id][data_type] = EMPTY_ALL[data_type].copy()
+        self.bot.data["servers"][server]["users"][user_id][data_type][key] = int(value)
+        self.bot.saveData()
+
+
+    @commands.command(name="add_data")
+    @ctx_wrapper
+    @is_jerrin
+    async def addDataCommand(self, ctx, server, user_id, data_type, key, value):
+        if data_type not in self.bot.data["servers"][server]["users"][user_id]:
+            self.bot.data["servers"][server]["users"][user_id][data_type] = EMPTY_ALL[data_type].copy()
+        self.bot.data["servers"][server]["users"][user_id][data_type][key] += int(value)
+        self.bot.saveData()
+
+
+    @commands.command(name="minus_data")
+    @ctx_wrapper
+    @is_jerrin
+    async def minusDataCommand(self, ctx, server, user_id, data_type, key, value):
+        if data_type not in self.bot.data[server]["users"][user_id]:
+            self.bot.data["servers"][server]["users"][user_id][data_type] = EMPTY_ALL[data_type].copy()
+        self.bot.data["servers"][server]["users"][user_id][data_type][key] -= int(value)
+        if self.bot.data["servers"][server]["users"][user_id][data_type][key] < 0:
+            self.bot.data["servers"][server]["users"][user_id][data_type][key] = 0
+        self.bot.saveData()
+
 
 
 async def setup(bot):

@@ -1,12 +1,10 @@
 # Jerrin Shirks
 
 # native imports
-from discord.ext import commands, tasks
-import asyncio
-import random
+from discord.ext import commands
 
 # custom imports
-from jerrinth import JerrinthBot
+from files.jerrinth import JerrinthBot
 
 
 

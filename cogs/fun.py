@@ -1,15 +1,14 @@
 # Jerrin Shirks
 
 # native imports
-from discord.ext import commands
-import random
 import time
 
 # custom imports
-from jerrinth import JerrinthBot
-from wrappers import *
-from support import *
-from config import *
+from files.jerrinth import JerrinthBot
+from files.wrappers import *
+from files.support import *
+from files.config import *
+from funcs.moderation import *
 
 
 class FunCog(commands.Cog):
@@ -19,8 +18,20 @@ class FunCog(commands.Cog):
 
     @commands.command(name='say', description='gg')
     @ctx_wrapper
+    @channel_redirect
     async def sayCommand(self, ctx):
-        await ctx.send(ctx.super.message.content)
+        text = ctx.super.message.content
+        text = removePings(text[5:], allowed=ctx.user)
+        if not text:
+            return await ctx.send("You can't just make me say nothing silly!")
+
+        restricted = await testModeration(ctx, text)
+        if restricted:
+            return
+
+        texts = splitStringIntoSegments(text)
+        for text in texts:
+            await ctx.send(text)
 
     @commands.command(name='8ball', description='Let the 8 Ball Predict!\n')
     @ctx_wrapper
@@ -33,7 +44,6 @@ class FunCog(commands.Cog):
             response = "🎱 " + random.choice(BAD_RESPONSES_8BALL)
         return await ctx.send(response)
 
-
     @commands.command(name='findseed', description='Roll an end-portal eye count.\n')
     @discord.ext.commands.cooldown(*FINDSEED_COOLDOWN)
     @ctx_wrapper
@@ -44,7 +54,6 @@ class FunCog(commands.Cog):
         if self.bot.getUser(ctx).get("findseed", None) is None:
             self.bot.getUser(ctx)["findseed"] = EMPTY_FUN.copy()
         self.bot.saveData()
-
 
         eyes = [random.random() for _ in range(self.eye_count)]
         e_empty = self.bot.getEmoji("mc_portal_empty")
@@ -72,7 +81,6 @@ class FunCog(commands.Cog):
                 await ctx.send(f"Try again in **{error.retry_after:.3f}**s.")
             else:
                 await ctx.super.message.add_reaction(convertDecimalToClock(error.retry_after / FINDSEED_COOLDOWN[1]))
-
 
     @commands.command(name='someone', aliases=["SOMEONE"], description='Ping a random person!\n')
     @discord.ext.commands.cooldown(*SOMEONE_COOLDOWN)

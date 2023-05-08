@@ -1,12 +1,11 @@
 # Jerrin Shirks
 
 # native imports
-from discord.ext import commands
 
 # custom imports
-from jerrinth import JerrinthBot
-from wrappers import *
-from support import *
+from files.jerrinth import JerrinthBot
+from files.wrappers import *
+from files.support import *
 
 
 
@@ -17,7 +16,6 @@ class ServerInfoCog(commands.Cog):
 
     @commands.command(name="settings", aliases=[])
     @ctx_wrapper
-    @channel_redirect
     async def serverSettingsCommand(self, ctx):
         def emoji(flag: bool) -> str:
             if flag:
@@ -28,12 +26,14 @@ class ServerInfoCog(commands.Cog):
         prefix = server.get("prefix", ",")
         censor = server.get("censorship", True)
         someone = server.get("@someone", False)
+        everywhere = server.get("usable_everywhere", False)
         redirect = server.get("channel_redirect", True)
         timeleft = server.get("show_time_left", True)
         sayreal = server.get("say_real", True)
         saytrue = server.get("say_true", True)
 
         table = [
+            [emoji(everywhere), f"Usable Everywhere", f"{prefix}omni"],
             [emoji(censor), f"Channel Redirect", f"{prefix}toggleredirect"],
             [emoji(someone), f"@someone Command", f"{prefix}togglesomeone"],
             [emoji(redirect), f"{prefix}ai Censorship", f"{prefix}togglecensor"],

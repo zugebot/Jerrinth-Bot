@@ -2,12 +2,11 @@
 
 # native imports
 import discord.ext.commands
-from discord.ext import commands
 
 # custom imports
-from jerrinth import JerrinthBot
-from wrappers import *
-from support import *
+from files.jerrinth import JerrinthBot
+from files.wrappers import *
+from files.support import *
 
 
 

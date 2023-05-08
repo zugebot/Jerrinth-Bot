@@ -2,14 +2,9 @@
 
 # native imports
 import aiohttp
-import random
-import functools
-import pprint
-import asyncio
-import discord
 
 # custom imports
-from support import *
+from files.support import *
 # None
 
 

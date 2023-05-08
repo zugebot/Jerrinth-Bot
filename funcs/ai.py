@@ -3,10 +3,11 @@
 # custom imports
 import openai
 from aiohttp import ClientSession
-import random
 import asyncio
 import tiktoken
-import time
+import pprint
+
+from files.support import *
 
 
 class AI:
@@ -23,8 +24,8 @@ class AI:
             "text-curie-001": 2048,
             "text-babbage-001": 2048,
             "text-ada-001": 2048,
-            "code-davinci-002": 8000,
-            "code-davinci-001": 2048,
+            # "code-davinci-002": 8000,
+            # "code-davinci-001": 2048,
             "code-cushman-001": 2048,
         }
         self.engines = ["gpt-3.5-turbo",
@@ -34,8 +35,8 @@ class AI:
                         "text-curie-001",
                         "text-babbage-001",
                         "text-ada-001",
-                        "code-davinci-002",
-                        "code-davinci-001",
+                        # "code-davinci-002",
+                        # "code-davinci-001",
                         "code-cushman-001"
                         ]
 
@@ -43,28 +44,27 @@ class AI:
     def getAPIKeys(self):
         return self.bot.settings["openai_api_keys"]
 
-    def getNextKey(self) -> None:
+    def loadNextKey(self) -> None:
         self.openai.api_key = self.getAPIKeys()[self.key_index]
-        self.key_index = (self.key_index + 1) % len(self.getAPIKeys())
+        self.key_index = (self.key_index + 1) % (len(self.getAPIKeys()) - 1)
 
     def popKey(self) -> None:
         self.bot.settings["openai_api_keys"].pop(self.key_index)
-        self.getNextKey()
+        self.loadNextKey()
         self.bot.saveSettings()
 
     def getTokenCount(self, text: str, engine: str) -> int:
-        cap = self.token_limit.get(engine, 2048)
+        _cap = self.token_limit.get(engine, 2048)
         text_tokens = len(text) // 4
-        return cap - text_tokens - 10
-
+        return _cap - text_tokens - 10
 
 
     async def getModeration(self, response):
         self.openai.aiosession.set(ClientSession())
+        self.loadNextKey()
         metrics = await self.bot.ai.openai.Moderation.acreate(input=response)
         await openai.aiosession.get().close()
         return metrics
-
 
 
     async def getChat(self, data):
@@ -73,14 +73,12 @@ class AI:
         async def getChatResponseWrapper(message_data):
 
             try:
-                self.getNextKey()
+                self.loadNextKey()
+                logging.info("before")
                 response = await self.openai.ChatCompletion.acreate(
                     model="gpt-3.5-turbo",
                     messages=message_data
                 )
-
-                # import pprint
-                # pprint.pprint(response, indent=4)
 
                 # updates token if quota ends
                 if "error" in response:
@@ -89,10 +87,15 @@ class AI:
                         print("(,chat) Popping API Key")
                         return False, "try_again"
 
+                    elif response["error"]["type"] == "server_error":
+                        print("[,chat] server_error")
+                        return False, "try_again"
+
                 else:
                     finish_reason = response['choices'][0]['finish_reason']
-                    if finish_reason not in ["stop", "length"]:
-                        print("(,chat) Bad Finish Reason")
+                    if finish_reason not in ["stop", "length", "None", None]:
+                        print(f"(,chat) Bad Finish Reason: '{finish_reason}'")
+                        pprint.pprint(response)
                         return False, "try_again"
 
                     # no response
@@ -121,6 +124,7 @@ class AI:
 
         for _ in range(3):
             status, resp = await getChatResponseWrapper(data)
+            logging.info("attempt: " + str(status))
             if status:
                 await openai.aiosession.get().close()
                 return True, resp
@@ -143,7 +147,7 @@ class AI:
         async def getAiResponseWrapper(_engine, _text, _randomness):
 
             try:
-                self.getNextKey()
+                self.loadNextKey()
                 response = await self.openai.Completion.acreate(
                     engine=self.engines[_engine],
                     prompt=_text,
@@ -158,23 +162,29 @@ class AI:
                 if "error" in response:
                     if response["error"]["type"] == "insufficient_quota":
                         self.popKey()
+                        print("failing popping key")
                         return False, "try_again"
 
                 else:
                     finish_reason = response['choices'][0]['finish_reason']
                     if finish_reason not in ["stop", "length"]:
+                        print("finish reason")
                         return False, "try_again"
 
                     # no response
                     if response['choices'][0]['text'] == "":
                         response['choices'][0]['text'] = "For some reason I do not have a response for that!"
-                        return True, response
 
                 return True, response
 
-            except openai.error.RateLimitError:
+            except openai.error.RateLimitError as e:
                 if self.bot.debug:
-                    print("openai.error.RateLimitError")
+                    print(e.args, "openai.error.RateLimitError")
+
+                if e.args[0] == 'You exceeded your current quota, please check your plan and billing details.':
+                    self.popKey()
+                    if self.bot.debug:
+                        print("popping ai key")
                 return False, "try_again"
 
             except openai.error.ServiceUnavailableError:
@@ -188,7 +198,6 @@ class AI:
                 return False, "try_again"
 
             except Exception as e:
-                # if self.bot.debug:
                 print(e)
                 return False, "try_again"
 
@@ -205,4 +214,4 @@ class AI:
                     continue
         else:
             await openai.aiosession.get().close()
-            return False, "Please try again!\nAn unknown error occurred."
+            return False, "Please try again! An unknown error occurred."

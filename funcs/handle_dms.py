@@ -3,7 +3,7 @@
 # native imports
 
 # custom imports
-from support import *
+from files.support import *
 
 
 

@@ -1,13 +1,12 @@
 # Jerrin Shirks
 
 # native imports
-from discord.ext import commands
 
 # custom imports
-from jerrinth import JerrinthBot
-from wrappers import *
-from support import *
-from config import *
+from files.jerrinth import JerrinthBot
+from files.wrappers import *
+from files.support import *
+from files.config import *
 
 
 
@@ -18,6 +17,44 @@ class LeaderBoardsCog(commands.Cog):
         self.empty_message = "Apparently no one has used the **{}{}** command..."
 
 
+    @commands.command(name="leaderboards", aliases=["ts", "lb"])
+    @ctx_wrapper
+    @channel_redirect
+    async def showLeaderboardsCommand(self, ctx):
+        prefix = self.bot.getPrefix(ctx)
+
+        embed = trophyEmbed()
+        embed.title = "Leaderboards"
+        embed.description = f'\n**``{prefix}tsa ``** - **{prefix}ai** command uses.' \
+                            f'\n**``{prefix}tsi ``** - **{prefix}findimg** command uses.' \
+                            f'\n**``{prefix}tsf ``** - **{prefix}findseed** command uses.' \
+                            f'\n**``{prefix}tspr``** - **{prefix}playrandom** command uses.' \
+                            f'\n**``{prefix}tsw ``** - **{prefix}whisper** command uses.' \
+                            f'\n**``{prefix}tss ``** - **@someone** command uses.'
+
+        await ctx.send(embed)
+
+    @commands.command(name="leaderboard")
+    @ctx_wrapper
+    @channel_redirect
+    async def showLeaderboardsCommand(self, ctx, board, amount=None):
+        amount = self.getAmount(amount)
+        message = "Total Uses Leaderboard"
+        match board.lower().replace("@", ""):
+            case "ai":
+                await self.globalLeaderboardObject(ctx, "ai", f"🏆 [Global] AI {message}", amount)
+            case "findseed":
+                await self.globalLeaderboardObject(ctx, "imgur", f"🏆 [Global] Findimg {message}", amount)
+            case "findimg":
+                await self.globalLeaderboardObject(ctx, "findseed", f"🏆 [Global] Findseed {message}", amount)
+            case "playrandom":
+                await self.globalLeaderboardObject(ctx, "playrandom", f"🏆 [Global] Playrandom {message}", amount)
+            case "whisper":
+                await self.globalLeaderboardObject(ctx, "whisper", f"🏆 [Global] Whisper {message}", amount)
+            case "someone":
+                await self.globalLeaderboardObject(ctx, "@someone", f"🏆 [Global] @Someone {message}", amount)
+
+
     def getAmount(self, amount=None):
         if amount is None:
             return self.leaderboard_amount
@@ -25,7 +62,7 @@ class LeaderBoardsCog(commands.Cog):
             return int(amount)
 
 
-    async def leaderboardObject(self, ctx, dict_key="", title="🏆 BLANK Total Uses Leaderboard", amount=None):
+    async def serverLeaderboardObject(self, ctx, dict_key="", title="🏆 BLANK Total Uses Leaderboard", amount=None):
         items = [i for i in self.bot.getUserDict(ctx).items() if dict_key in i[1]]
         if len(items) == 0:
             return await ctx.send(errorEmbed(self.empty_message.format(self.bot.getPrefix(ctx), dict_key)))
@@ -35,7 +72,7 @@ class LeaderBoardsCog(commands.Cog):
         amount = self.getAmount(amount)
         for n, user in enumerate(users):
             key, value = user
-            if n >= amount or value[dict_key]["total_uses"] == 0:
+            if n >= amount + 1 or value[dict_key]["total_uses"] == 0:
                 break
             table.append([value[dict_key]["total_uses"], f"<@{key}>"])
 
@@ -45,29 +82,13 @@ class LeaderBoardsCog(commands.Cog):
                                 )
         await ctx.send(newEmbed(leaderboard, title=title))
 
-    @commands.command(name="leaderboards", aliases=["ts", "lb"])
-    @ctx_wrapper
-    @channel_redirect
-    async def showLeaderboardsCommand(self, ctx):
-        prefix = self.bot.getPrefix(ctx)
-
-        embed = trophyEmbed()
-        embed.title = "Leaderboards"
-        embed.description = f"\n**``{prefix}tsa``** - **{prefix}ai** command uses." \
-                            f"\n**``{prefix}tsi``** - **{prefix}findimg** command uses." \
-                            f"\n**``{prefix}tsf``** - **{prefix}findseed** command uses." \
-                            f"\n**``{prefix}tss``** - **@someone** command uses."
-        await ctx.send(embed)
-
-
-
 
     @commands.command(name="topservai", aliases=["tsa", "TSA", "Tsa"])
     @discord.ext.commands.cooldown(*LEADERBOARD_COOLDOWN)
     @ctx_wrapper
     @channel_redirect
     async def topServerAICommand(self, ctx, amount=None):
-        await self.leaderboardObject(ctx, "ai", "🏆 AI Total Uses Leaderboard", amount)
+        await self.serverLeaderboardObject(ctx, "ai", "🏆 [Server] AI Total Uses Leaderboard", amount)
 
 
     @commands.command(name="topservi", aliases=["tsi", "TSI", "Tsi"])
@@ -75,7 +96,7 @@ class LeaderBoardsCog(commands.Cog):
     @ctx_wrapper
     @channel_redirect
     async def topServerFindImgCommand(self, ctx, amount=None):
-        await self.leaderboardObject(ctx, "imgur", f"🏆 Findimg Total Uses Leaderboard", amount)
+        await self.serverLeaderboardObject(ctx, "imgur", f"🏆 [Server] Findimg Total Uses Leaderboard", amount)
 
 
     @commands.command(name="topservf", aliases=["tsf", "TSF", "Tsf"])
@@ -83,7 +104,7 @@ class LeaderBoardsCog(commands.Cog):
     @ctx_wrapper
     @channel_redirect
     async def topServerFindSeedCommand(self, ctx, amount=None):
-        await self.leaderboardObject(ctx, "findseed", f"🏆 Findseed Total Uses Leaderboard", amount)
+        await self.serverLeaderboardObject(ctx, "findseed", f"🏆 [Server] Findseed Total Uses Leaderboard", amount)
 
 
     @commands.command(name="topservs", aliases=["tss", "TSS", "Tss"])
@@ -91,14 +112,87 @@ class LeaderBoardsCog(commands.Cog):
     @ctx_wrapper
     @channel_redirect
     async def topAtSomeoneCommand(self, ctx, amount=None):
-        await self.leaderboardObject(ctx, "@someone", f"🏆 @Someone Total Uses Leaderboard", amount)
+        await self.serverLeaderboardObject(ctx, "@someone", f"🏆 [Server] @Someone Total Uses Leaderboard", amount)
+
+    @commands.command(name="topservpr", aliases=["tspr", "TSPR", "Tspr"])
+    @discord.ext.commands.cooldown(*LEADERBOARD_COOLDOWN)
+    @ctx_wrapper
+    @channel_redirect
+    async def topServerPlayRandomCommand(self, ctx, amount=None):
+        await self.serverLeaderboardObject(ctx, "playrandom", f"🏆 [Server] Playrandom Total Uses Leaderboard", amount)
+
+    @commands.command(name="topservw", aliases=["tsw", "TSW", "Tsw"])
+    @discord.ext.commands.cooldown(*LEADERBOARD_COOLDOWN)
+    @ctx_wrapper
+    @channel_redirect
+    async def topServerPlayRandomCommand(self, ctx, amount=None):
+        await self.serverLeaderboardObject(ctx, "whisper", f"🏆 [Server] Whisper Total Uses Leaderboard", amount)
+
+
+
+    async def globalLeaderboardObject(self, ctx, dict_key="ai", title="", maximum_users=None):
+        items = [i for i in self.bot.data["users"].items() if dict_key in i[1]]
+        users = sorted(items,
+                       key=lambda x: x[1][dict_key]["total_uses"],
+                       reverse=True)
+        table = []
+        maximum_users = self.getAmount(maximum_users)
+        for n, (key, value) in enumerate(users):
+            if n >= maximum_users or value[dict_key]["total_uses"] == 0:
+                break
+            table.append([value[dict_key]["total_uses"], f"<@{key}>"])
+        leaderboard = makeTable(table, show_index=True, code=[0])
+
+        await ctx.send(newEmbed(leaderboard, title=title))
+
+    @commands.command(game="globalservai", aliases=["gsa", "GSA", "Gsa"])
+    @discord.ext.commands.cooldown(*LEADERBOARD_COOLDOWN)
+    @ctx_wrapper
+    @channel_redirect
+    async def topGlobalAICommand(self, ctx, amount=None):
+        await self.globalLeaderboardObject(ctx, "ai", "🏆 [Global] AI Total Uses Leaderboard", amount)
+
+    @commands.command(name="globalservi", aliases=["gsi", "GSI", "Gsi"])
+    @discord.ext.commands.cooldown(*LEADERBOARD_COOLDOWN)
+    @ctx_wrapper
+    @channel_redirect
+    async def topGlobalFindImgCommand(self, ctx, amount=None):
+        await self.globalLeaderboardObject(ctx, "imgur", f"🏆 [Global] Findimg Total Uses Leaderboard", amount)
+
+    @commands.command(name="globalservf", aliases=["gsf", "GSF", "Gsf"])
+    @discord.ext.commands.cooldown(*LEADERBOARD_COOLDOWN)
+    @ctx_wrapper
+    @channel_redirect
+    async def topGlobalFindSeedCommand(self, ctx, amount=None):
+        await self.globalLeaderboardObject(ctx, "findseed", f"🏆 [Global] Findseed Total Uses Leaderboard", amount)
+
+    @commands.command(name="globalservs", aliases=["gss", "GSS", "Gss"])
+    @discord.ext.commands.cooldown(*LEADERBOARD_COOLDOWN)
+    @ctx_wrapper
+    @channel_redirect
+    async def topGlobalAtSomeoneCommand(self, ctx, amount=None):
+        await self.globalLeaderboardObject(ctx, "@someone", f"🏆 [Global] @Someone Total Uses Leaderboard", amount)
+
+    @commands.command(name="globalservpr", aliases=["gspr", "GSPR", "Gspr"])
+    @discord.ext.commands.cooldown(*LEADERBOARD_COOLDOWN)
+    @ctx_wrapper
+    @channel_redirect
+    async def topGlobalPlayRandomCommand(self, ctx, amount=None):
+        await self.globalLeaderboardObject(ctx, "playrandom", f"🏆 [Global] Playrandom Total Uses Leaderboard", amount)
+
+    @commands.command(name="globalservw", aliases=["gsw", "GSW", "Gsw"])
+    @discord.ext.commands.cooldown(*LEADERBOARD_COOLDOWN)
+    @ctx_wrapper
+    @channel_redirect
+    async def topGlobalPlayRandomCommand(self, ctx, amount=None):
+        await self.globalLeaderboardObject(ctx, "whisper", f"🏆 [Global] Whisper Total Uses Leaderboard", amount)
 
 
     @commands.command(name="data", aliases=[])
     @ctx_wrapper
     @channel_redirect
     async def getDataCommand(self, ctx):
-        prefix = self.bot.data[ctx.server]["prefix"]
+        prefix = self.bot.data["servers"][ctx.server]["prefix"]
 
         server_count = len(self.bot.guilds)
         server_user_total_count = self.bot.get_guild(ctx.serverInt).member_count
@@ -120,16 +214,19 @@ class LeaderBoardsCog(commands.Cog):
 
         part2 = [
             ["Here", "Ever"],
-            [0, 0, f"{prefix}ai"],
+            [0, 0, f"{prefix}ai & {prefix}chat"],
             [0, 0, f"{prefix}findimg"],
             [0, 0, f"{prefix}findseed"],
+            [0, 0, f"{prefix}playrandom"],
+            [0, 0, f"{prefix}whisper"],
             [0, 0, f"@someone"],
         ]
-        for server in self.bot.data:
-            for user in self.bot.data[server]["users"]:
-                userObj = self.bot.data[server]["users"][user]
+        for server in self.bot.data["servers"]:
+            for user in self.bot.data["servers"][server]["users"]:
+                userObj = self.bot.data["servers"][server]["users"][user]
 
-                for tagNum, tag in enumerate(["ai", "imgur", "findseed", "@someone"], start=1):
+                for tagNum, tag in enumerate(["ai", "imgur", "findseed",
+                                              "playrandom", "whisper", "@someone"], start=1):
                     if tag in userObj:
                         part2[tagNum][1] += userObj[tag]["total_uses"]
                         if server == ctx.server:
