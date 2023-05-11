@@ -27,7 +27,7 @@ class ChatCog(commands.Cog, Memory):
         if self.bot.getUser(ctx).get("ai", None) is None:
             self.bot.getUser(ctx)["ai"] = EMPTY_AI.copy()
 
-    @commands.command(name="chat")
+    @commands.command(name="chat", aliases=["<@856411268633329684>"])
     @discord.ext.commands.cooldown(*CHAT_COOLDOWN)
     @ctx_wrapper
     @channel_redirect

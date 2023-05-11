@@ -38,22 +38,22 @@ class LeaderBoardsCog(commands.Cog):
     @channel_redirect
     async def showLeaderboardsCommand(self, ctx, board, amount=None):
         amount = self.getAmount(amount)
-        message = "Total Uses Leaderboard"
-        match board.lower().replace("@", ""):
-            case "ai":
-                await self.globalLeaderboardObject(ctx, "ai", f"🏆 [Global] AI {message}", amount)
-            case "findimg":
-                await self.globalLeaderboardObject(ctx, "imgur", f"🏆 [Global] Findimg {message}", amount)
-            case "findseed":
-                await self.globalLeaderboardObject(ctx, "findseed", f"🏆 [Global] Findseed {message}", amount)
-            case "playrandom":
-                await self.globalLeaderboardObject(ctx, "playrandom", f"🏆 [Global] Playrandom {message}", amount)
-            case "whisper":
-                await self.globalLeaderboardObject(ctx, "whisper", f"🏆 [Global] Whisper {message}", amount)
-            case "someone":
-                await self.globalLeaderboardObject(ctx, "@someone", f"🏆 [Global] @Someone {message}", amount)
-            case "play":
-                await self.globalLeaderboardObject(ctx, "play", f"🏆 [Global] Play {message}", amount)
+        title = "🏆 [Global] {} Total Uses Leaderboard"
+        key = board.lower().replace("@", "")
+        keys = {
+            "ai": ["ai", "AI"],
+            "findimg": ["imgur", "Findimg"],
+            "findseed": ["findseed", "Findseed"],
+            "playrandom": ["playrandom", "Playrandom"],
+            "whisper": ["whisper", "Whisper"],
+            "play": ["play", "Play"],
+            "someone": ["@someone", "@Someone"]
+        }
+        if key not in keys:
+            return
+        keys = keys[key]
+        print(keys[0])
+        await self.globalLeaderboardObject(ctx, keys[0], title.format(keys[1]), amount)
 
     def getAmount(self, amount=None):
         if amount is None:

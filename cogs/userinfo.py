@@ -45,15 +45,15 @@ class UserInfoCog(commands.Cog):
         while eyes[-1] == 0:
             eyes.pop()
 
-        table = []
+        table1 = []
         for n, eye in enumerate(eyes):
             item1 = n
             item2 = f"{self.bot.getEmoji('mc_ender_eye')}"
             item3 = f"**{eye}**x"
-            table.append([item1, item2, item3])
-        table.reverse()
+            table1.append([item1, item2, item3])
+        table1.reverse()
 
-        table = makeTable(data=table,
+        table1 = makeTable(data=table1,
                           boldCol=[],
                           code=[0],
                           sep={
@@ -62,7 +62,26 @@ class UserInfoCog(commands.Cog):
                           },
                           direction="left")
 
-        embed.add_field(name="Eye Count", inline=False, value=table)
+        eyes = data_user["findseed"]["eye_count"].copy()
+        while eyes[-1] == 0:
+            eyes.pop()
+        eye_sum = sum([eye * n for n, eye in enumerate(eyes)])
+
+        table2 = [
+            [data_user['findseed']['total_uses'], "Total Uses"],
+            [eye_sum, "Total Eyes"]
+        ]
+
+        table2 = makeTable(data=table2,
+                           boldCol=[],
+                           code=[0],
+                           sep={
+                               0: " - ",
+                           },
+                           direction="left")
+
+        embed.add_field(name="Eye Count", inline=True, value=table1)
+        embed.add_field(name="Other Stats", inline=True, value=table2)
         await ctx.send(embed)
 
 

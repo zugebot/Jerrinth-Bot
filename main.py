@@ -191,7 +191,8 @@ async def on_ready() -> None:
     Loads all cogs, and prints startup message to console.
     Prepares the Imgur library.
     """
-    # await Jerrinth.imgur.loadRandomImages()
+
+    await Jerrinth.imgur.loadRandomImages()
 
     for filename in os.listdir(Jerrinth.directory + "cogs"):
         if filename.endswith(".py"):

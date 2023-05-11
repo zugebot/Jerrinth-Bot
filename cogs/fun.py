@@ -2,6 +2,7 @@
 
 # native imports
 import time
+import math
 
 # custom imports
 from files.jerrinth import JerrinthBot
@@ -11,10 +12,18 @@ from files.config import *
 from funcs.moderation import *
 
 
+
 class FunCog(commands.Cog):
     def __init__(self, bot):
         self.bot: JerrinthBot = bot
+
         self.eye_count = 12
+
+
+    def prob_of_n_tens(self, n):
+        numerator = math.comb(self.eye_count, n) * (9 ** (self.eye_count - n))
+        denominator = 10 ** self.eye_count
+        return numerator / denominator
 
     @commands.command(name='say', description='gg')
     @ctx_wrapper
@@ -43,6 +52,14 @@ class FunCog(commands.Cog):
         else:
             response = "🎱 " + random.choice(BAD_RESPONSES_8BALL)
         return await ctx.send(response)
+
+    @commands.command(name='etest')
+    @ctx_wrapper
+    @channel_redirect
+    async def eyeTestCommand(self, ctx):
+        eyes = self.bot.getUser(ctx)["findseed"]["eye_count"].copy()
+        z_score = sum([(eye_c - self.eye_mean)/self.eye_variance for eye_c in eyes])
+        return await ctx.sendEmbed(f"Your Z-Score: {z_score}")
 
     @commands.command(name='findseed', description='Roll an end-portal eye count.\n')
     @discord.ext.commands.cooldown(*FINDSEED_COOLDOWN)

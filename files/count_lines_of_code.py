@@ -11,7 +11,7 @@ if __name__ == "__main__":
         "cogs/fun.py",
         "cogs/handle_dms.py",
         "cogs/help.py",
-        "cogs/imgur.py_",
+        "cogs/imgur.py",
         "cogs/leaderboards.py",
         "cogs/serverinfo.py",
         "cogs/userinfo.py",
@@ -23,6 +23,7 @@ if __name__ == "__main__":
         "funcs/imgur.py",
         "funcs/nsp.py",
         "funcs/moderation.py",
+        "funcs/memory.py",
 
         "files/data_manager.py",
         "files/jerrinth.py",

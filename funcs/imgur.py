@@ -2,6 +2,7 @@
 
 # native imports
 import aiohttp
+import ssl
 
 # custom imports
 from files.support import *
