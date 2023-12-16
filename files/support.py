@@ -70,10 +70,13 @@ def separate(word, symbol=" "):
 
 
 # no longer used
-"""
+
 def loadBadWords(filename):
-    with open(filename, "r+") as file:
-        badwords_init = file.read().splitlines()
+    try:
+        with open(filename, "r+") as file:
+            badwords_init = file.read().splitlines()
+    except:
+        return
 
     while "" in badwords_init:
         badwords_init.remove("")
@@ -100,7 +103,7 @@ def loadBadWords(filename):
 
 BADWORDS_FILE = "data/badwords.txt"
 BADWORDS = loadBadWords(BADWORDS_FILE)
-"""
+
 
 def removeBadWords(string):
     count = 0
@@ -889,6 +892,8 @@ def removeFirstWord(string):
 
 
 def renameFileToLength(filename, length):
+    if "." not in filename:
+        return filename[:length]
     file_pieces = filename.split(".")
     first = ".".join(file_pieces[:-1])
     last = file_pieces[-1]

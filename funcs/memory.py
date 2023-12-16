@@ -1,6 +1,7 @@
 # Jerrin Shirks
 
 # normal imports
+from copy import deepcopy
 
 # custom imports
 from files.jerrinth import JerrinthBot
@@ -9,24 +10,39 @@ from files.jerrinth import JerrinthBot
 class Memory:
     def __init__(self, bot: JerrinthBot):
         self.bot = bot
+        self.MAX_MEMORY_SIZE = 3300
 
     def count_tokens(self, text):
         return len(self.bot.ai.encoding.encode(text))
 
     def get_chat_prompt(self, ctx):
-        return self.bot.getChannel(ctx).get("chatgpt-system-message", self.bot.ai_prompt_dict["normal"])
+        return self.bot.getChannel(ctx).get("chatgpt-system-message", "default")
 
     def set_person_chat_prompt(self, ctx, name):
         with open(self.bot.directory + f"data/prompts/{name}.txt", "r", encoding='utf-8') as f:
             self.bot.getChannel(ctx)["chatgpt-system-message"] = f.read()
 
+    def turn_default_to_prompt(self, ctx, temp_data=None) -> list:
+        if temp_data is None:
+            temp_data = self.get_chat_history(ctx)
+
+        new_data = deepcopy(temp_data)
+        if new_data[0]["content"] == "default":
+            new_data[0]["content"] = self.bot.ai_prompt_dict["default"]
+        return new_data
+
     def get_chat_history(self, ctx) -> list:
-        data = self.bot.getChannel(ctx).get("chatgpt-content", [None])
-        data[0] = {"role": "system", "content": self.get_chat_prompt(ctx)}
+        data = self.bot.getChannel(ctx).get(
+            "chatgpt-content",
+            [{"role": "system", "content": self.get_chat_prompt(ctx)}]
+        )
         return data
 
-    def add_chat_user(self, ctx, content):
-        data = self.get_chat_history(ctx)
+    def add_chat_user(self, ctx, content, temp_data=None) -> None:
+        if temp_data is None:
+            data = self.get_chat_history(ctx)
+        else:
+            data = temp_data
         data.append({"role": "user", "content": content})
         self.bot.getChannel(ctx)["chatgpt-content"] = data
 
@@ -35,7 +51,7 @@ class Memory:
         data.append({"role": "assistant", "content": content})
         self.bot.getChannel(ctx)["chatgpt-content"] = data
 
-    def get_history_token_size(self, ctx, data=None):
+    def get_history_token_size(self, ctx, data=None) -> int:
         if data is None:
             data = self.get_chat_history(ctx)
         token_count = [0] * len(data)
@@ -44,11 +60,11 @@ class Memory:
             token_count[index] = self.count_tokens(content["content"])
 
         total = sum(token_count)
-        print("History Tokens:", total, token_count)
+        # print("History Tokens:", total, token_count)
 
         return total
 
-    def reset_chat_history(self, ctx):
+    def reset_chat_history(self, ctx) -> None:
         if "chatgpt-content" in self.bot.getChannel(ctx):
             del self.bot.getChannel(ctx)["chatgpt-content"]
 
@@ -57,13 +73,14 @@ class Memory:
             data = self.get_chat_history(ctx)
         else:
             data = temp_data
+        data = self.turn_default_to_prompt(ctx, data)
 
         token_count = [0] * len(data)
         for index, content in enumerate(data):
             token_count[index] = self.count_tokens(content["content"])
 
         to_remove = 0
-        while sum(token_count) > 3900:
+        while sum(token_count) > self.MAX_MEMORY_SIZE:
             to_remove += 1
             token_count.pop(0)
 

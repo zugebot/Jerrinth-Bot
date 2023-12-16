@@ -65,7 +65,7 @@ class AICog(commands.Cog, Memory):
 
         """DOES CHATTING INSTEAD OF AI'ING OR SOMETHING"""
         if self.bot.ai.engines[ENGINE] == "gpt-3.5-turbo":
-            return await ChatCog.chatCommand(None, ctx)
+            return await ChatCog.chatCommand(self, ctx)
             # return await self.chatCommand(ctx)
 
         """PARSES RANDOM TYPE"""

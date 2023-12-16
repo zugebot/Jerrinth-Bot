@@ -40,13 +40,15 @@ class AI:
                         "code-cushman-001"
                         ]
 
-
     def getAPIKeys(self):
         return self.bot.settings["openai_api_keys"]
 
     def loadNextKey(self) -> None:
         self.openai.api_key = self.getAPIKeys()[self.key_index]
-        self.key_index = (self.key_index + 1) % (len(self.getAPIKeys()) - 1)
+        if len(self.getAPIKeys()) == 1:
+            self.key_index = 0
+        else:
+            self.key_index = (self.key_index + 1) % (len(self.getAPIKeys()) - 1)
 
     def popKey(self) -> None:
         self.bot.settings["openai_api_keys"].pop(self.key_index)
@@ -58,14 +60,39 @@ class AI:
         text_tokens = len(text) // 4
         return _cap - text_tokens - 10
 
-
     async def getModeration(self, response):
         self.openai.aiosession.set(ClientSession())
-        self.loadNextKey()
-        metrics = await self.bot.ai.openai.Moderation.acreate(input=response)
-        await openai.aiosession.get().close()
-        return metrics
 
+        async def getModerationWrapper(message_data):
+            try:
+                self.loadNextKey()
+                _response = await self.bot.ai.openai.Moderation.acreate(input=message_data)
+
+            except openai.error.RateLimitError as e:
+                if e.error["type"] == "insufficient_quota":
+                    print("(moderation) Popping API Key")
+                    self.popKey()   # updates token if quota ends
+                else:
+                    print("(moderation) openai.error.RateLimitError", e.error)
+                return False, "try_again"
+
+            else:
+                return True, _response
+
+        for _ in range(3):
+            status, resp = await getModerationWrapper(response)
+            logging.info("attempt: " + str(status))
+            if status:
+                await openai.aiosession.get().close()
+                return True, resp
+            else:
+                if resp == "try_again":
+                    print("(moderation) trying again")
+                    await asyncio.sleep(2)
+                    continue
+        else:
+            await openai.aiosession.get().close()
+            return False, "Please try again!\nAn unknown error occurred."
 
     async def getChat(self, data):
         self.openai.aiosession.set(ClientSession())
@@ -80,32 +107,26 @@ class AI:
                     messages=message_data
                 )
 
-                # updates token if quota ends
-                if "error" in response:
-                    if response["error"]["type"] == "insufficient_quota":
-                        self.popKey()
-                        print("(,chat) Popping API Key")
-                        return False, "try_again"
+                finish_reason = response['choices'][0]['finish_reason']
+                if finish_reason not in ["stop", "length", "None", None]:
+                    print(f"(,chat) Bad Finish Reason: '{finish_reason}'")
+                    pprint.pprint(response)
+                    return False, "try_again"
 
-                    elif response["error"]["type"] == "server_error":
-                        print("[,chat] server_error")
-                        return False, "try_again"
-
-                else:
-                    finish_reason = response['choices'][0]['finish_reason']
-                    if finish_reason not in ["stop", "length", "None", None]:
-                        print(f"(,chat) Bad Finish Reason: '{finish_reason}'")
-                        pprint.pprint(response)
-                        return False, "try_again"
-
-                    # no response
-                    if response['choices'][0]['message']['content'] == "":
-                        response['choices'][0]['message']['content'] = "For some reason I do not have a response for that!"
-                        return True, response
+                # no response
+                if response['choices'][0]['message']['content'] == "":
+                    response['choices'][0]['message'][
+                        'content'] = "For some reason I do not have a response for that!"
+                    return True, response
 
                 return True, response
 
-            except openai.error.RateLimitError:
+            except openai.error.RateLimitError as e:
+                if e.error["type"] == "insufficient_quota":
+                    self.popKey()   # updates token if quota ends
+                    print("(,chat) Popping API Key")
+                    return False, "try_again"
+
                 print("(,chat) openai.error.RateLimitError")
                 return False, "try_again"
 
@@ -121,7 +142,6 @@ class AI:
                 print("(,chat) Other error:", e, e.args)
                 return False, "try_again"
 
-
         for _ in range(3):
             status, resp = await getChatResponseWrapper(data)
             logging.info("attempt: " + str(status))
@@ -131,15 +151,11 @@ class AI:
             else:
                 if resp == "try_again":
                     print("(,chat) trying again")
-                    await asyncio.sleep(3)
+                    await asyncio.sleep(2)
                     continue
         else:
             await openai.aiosession.get().close()
             return False, "Please try again!\nAn unknown error occurred."
-
-
-
-
 
     async def getResponse(self, engine, text, randomness):
         self.openai.aiosession.set(ClientSession())
@@ -201,7 +217,6 @@ class AI:
                 print(e)
                 return False, "try_again"
 
-
         for _ in range(3):
             status, resp = await getAiResponseWrapper(engine, text, randomness)
             if status:
@@ -210,7 +225,7 @@ class AI:
             else:
                 if resp == "try_again":
                     print("trying again")
-                    await asyncio.sleep(3)
+                    await asyncio.sleep(2)
                     continue
         else:
             await openai.aiosession.get().close()

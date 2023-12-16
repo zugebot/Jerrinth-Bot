@@ -1,8 +1,10 @@
 # Jerrin Shirks
 # native imports
 from discord import Interaction
+from discord.ext import tasks
 from discord.ext.commands import CommandNotFound, CommandOnCooldown
 import datetime
+import random
 import logging
 from files.wrappers import *
 
@@ -184,13 +186,60 @@ async def on_command_error(ctx, error):
     raise error
 
 
-# BOT STARTUP CODE
+@tasks.loop(seconds=6)
+async def randomTyping():
+    channel_id = 751086615274979419
+    channel = Jerrinth.get_channel(channel_id)
+
+    kbps = channel.bitrate // 1000
+    if kbps == 64 and channel.name == "General":
+        return
+
+    try:
+
+        if kbps != 64:
+            await channel.edit(bitrate=64000)
+            cause = 0
+        elif channel.name != "General":
+            await channel.edit(name="General")
+            cause = 1
+        else:
+            cause = 0
+
+        links = [
+            "https://tenor.com/view/ltg-low-tier-god-you-should-kill-yourself-now-gif-23487049",
+            "https://tenor.com/view/black-man-meme-gif-26066047",
+            "https://media.discordapp.net/attachments/736427919194456095/879818545364611082/image0.gif",
+            "https://tenor.com/view/lmfao-laughing-gif-25145562",
+            "https://media.discordapp.net/attachments/725960059368243250/1097970339901882388/speed-10.gif",
+            "https://media.discordapp.net/attachments/853524224262012938/1137634226712354826/pointless.gif",
+            "https://tenor.com/view/lol-troll-ratio-gif-24586516",
+            "https://media.discordapp.net/attachments/812412624082829314/814435448101404672/image0.gif",
+            "https://tenor.com/view/math-solve-gif-25965255",
+            "https://media.discordapp.net/attachments/535451640812142602/1130553951578759168/ezgif.com-apng-to-gif.gif"
+        ]
+
+        link = random.choice(links)
+
+        user_id = 362793094342770688
+        user = Jerrinth.get_user(user_id)
+
+        if cause == 0:
+            await user.send(embed=newEmbed("KYS retard I immediately set it back to 64Kbps. Lol it can only be 64 now"))
+        if cause == 1:
+            await user.send(embed=newEmbed("KYS retard I immediately changed it back the General."))
+        await user.send(content=link)
+    except Exception as e:
+        print(e)
+
+
 @Jerrinth.event
 async def on_ready() -> None:
     """
     Loads all cogs, and prints startup message to console.
     Prepares the Imgur library.
     """
+    randomTyping.start()
 
     await Jerrinth.imgur.loadRandomImages()
 

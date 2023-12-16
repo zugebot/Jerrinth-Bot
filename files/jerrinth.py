@@ -52,8 +52,12 @@ class JerrinthBot(commands.Bot, DataManager):
         self.banned_users_file = self.directory + "data/banned.json"
         self.banned_users = read_json(self.banned_users_file)
 
+        self.badwords_file = self.directory + "data/badwords.json"
+        self.badwords = read_json(self.badwords_file)["badwords"]
+
         # custom prompts
         self.ai_prompts = os.listdir(self.directory + "data/prompts")
+        print("List of prompts:", ", ".join(self.ai_prompts))
         self.ai_prompt_dict = {}
         for file in os.listdir(self.directory + f"data/prompts"):
             key = file.split(".")[0]

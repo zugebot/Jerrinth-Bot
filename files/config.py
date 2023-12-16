@@ -21,7 +21,8 @@ VOICE_JOIN_COOLDOWN = (1, 2, commands.BucketType.guild)
 VOICE_LEAVE_COOLDOWN = (1, 2, commands.BucketType.guild)
 VOICE_PLAY_COOLDOWN = (1, 2, commands.BucketType.guild)
 VOICE_QUICK_COOLDOWN = (1, 1, commands.BucketType.guild)
-VOICE_PLAYLIST_COOLDOWN = (1, 15, commands.BucketType.guild)
+VOICE_PLAYLIST_COOLDOWN = (1, 20, commands.BucketType.guild)
+VOICE_SEARCH_COOLDOWN = (1, 5, commands.BucketType.user)
 
 WHISPER_MAX_FILE_SIZE = 25_000_000 # MB
 

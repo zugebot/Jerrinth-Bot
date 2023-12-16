@@ -100,8 +100,8 @@ class HelpCog(commands.Cog):
         embed4 = newEmbed(f"  {start}chat *msg   `` - Just like **{prefix}ai**, but with memory!"
                           f"\n{start}chat clear  `` - Clears the bot's message memory."
                           f"\n{start}chat prompt `` - Shows the current prompt."
-                          f"\n{start}chat setprompt   *msg`` - Sets the prompt for the bot to follow."
-                          f"\n{start}chat resetprompt *msg`` - Resets the prompt that bot follows. "
+                          f"\n{start}chat setprompt *msg`` - Sets the prompt for the bot to follow."
+                          f"\n{start}chat resetprompt `` - Resets the prompt that bot follows. "
                           f"\n{start}chat history`` - Sends a .json file of the chat history."
                           f"\n{start}chat load   `` - Resets the prompt that bot follows. "
                           f"\nTo use **,chat load**, send the .json from **,chat history**."
@@ -122,11 +122,14 @@ class HelpCog(commands.Cog):
         embed5.set_author(name="4/7 - Commands: FUN", icon_url=ctx.author.avatar)
 
         embed6 = newEmbed(f"  {start}data   `` - shows *my* overall accomplishments!"
-                          f"\n{start}tsa  *n`` - leaderboard of **``{prefix}ai``** command uses."
-                          f"\n{start}tsi  *n`` - leaderboard of **``{prefix}findimg``** command uses."
-                          f"\n{start}tsf  *n`` - leaderboard of **``{prefix}findseed``** command uses."
-                          f"\n{start}tspr *n`` - leaderboard of **``{prefix}playrandom``** command uses."
-                          f"\n{start}tss  *n`` - leaderboard of **``@someone``** command uses.")
+                          f"\n"
+                          f"\nYou can access leaderboards containing command uses with these:"
+                          f"\n{start}leaderboard ai *n`` - **``{prefix}ai``** command uses."
+                          f"\n{start}leaderboard findimg  *n`` - **``{prefix}findimg``** command uses."
+                          f"\n{start}leaderboard findseed  *n`` - **``{prefix}findseed``** command uses."
+                          f"\n{start}leaderboard play *n`` - **``{prefix}play``** command uses."
+                          f"\n{start}leaderboard playrandom *n`` - **``{prefix}playrandom``** command uses."
+                          f"\n{start}leaderboard @someone  *n`` - **``@someone``** command uses.")
         embed6.set_author(name="5/7 - Commands: Leaderboard", icon_url=ctx.author.avatar)
 
         embed7 = newEmbed(f"  {start}join`` - joins a vc (only if you are in it)"
@@ -142,6 +145,7 @@ class HelpCog(commands.Cog):
                           f"\n{start}playrandom    `` - plays a random video/audio file from my server."
                           f"\n{start}playlist      `` - shows an interactive list of all files on my server."
                           f"\n{start}playrename *oldname *newname`` - renames a file on my server."
+                          f"\n{start}playsearch keyword`` - Returns a list of files with that keyword."
                           f"\n")
         embed7.set_author(name="5/7 - Commands: Voicechat", icon_url=ctx.author.avatar)
 

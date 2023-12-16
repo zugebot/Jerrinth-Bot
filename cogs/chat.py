@@ -27,7 +27,7 @@ class ChatCog(commands.Cog, Memory):
         if self.bot.getUser(ctx).get("ai", None) is None:
             self.bot.getUser(ctx)["ai"] = EMPTY_AI.copy()
 
-    @commands.command(name="chat", aliases=["<@856411268633329684>"])
+    @commands.command(name="chat", aliases=["<@856411268633329684>", "CHAT", "Chat", "cHAT"])
     @discord.ext.commands.cooldown(*CHAT_COOLDOWN)
     @ctx_wrapper
     @channel_redirect
@@ -37,7 +37,7 @@ class ChatCog(commands.Cog, Memory):
         self.bot.ensureChannelExists(ctx)
 
         """PARSES INPUT TEXT"""
-        user_input = removeFirstWord(ctx.message.content)
+        user_input: str = removeFirstWord(ctx.message.content)
 
         if ctx.message.attachments:
             for attachment in ctx.message.attachments:
@@ -59,36 +59,41 @@ class ChatCog(commands.Cog, Memory):
         # else:
             # print("no attachments")
 
-        args = user_input.split()
+        parse_args = user_input.split()
 
-        if len(args) == 0:
-            return await HelpCog.displayHelpCommand(self, ctx, page=4)
-        if args[0] == "help":
-            return await HelpCog.displayHelpCommand(self, ctx, page=4)
 
-        if args[0] == "load":
-            return await self.loadChatHistory(ctx)
-        if args[0] == "forget":
-            amount = 1 if len(args) == 1 else args[1]
-            return await self.forgetChatHistory(ctx, amount + 1)
-        if args[0] == "clear":
-            return await self.resetChatHistory(ctx)
-        if args[0] == "history":
-            return await self.viewChatHistory(ctx)
-        if args[0] in ["token", "tokens"]:
-            return await ctx.sendEmbed(f"**Current Token Size:** {self.get_history_token_size(ctx)}")
-        elif args[0] == "prompt":
-            return await ctx.sendEmbed(self.get_chat_prompt(ctx), title="Current Prompt")
-        elif f"{args[0]}.txt" in self.bot.ai_prompts:
-            self.set_person_chat_prompt(ctx, args[0])
-            return await ctx.sendEmbed(f"Activated ***{args[0].capitalize()} Mode!***")
-        elif args[0] == "resetprompt":
-            await self.chatResetSystemMessage(ctx)
-            return await self.resetChatHistory(ctx)
-        elif args[0] == "setprompt":
-            if len(args) > 1:
-                await self.chatSetSystemMessage(ctx, ' '.join(args[1:]))
+        if len(parse_args) == 0:
+            return await HelpCog.displayHelpCommand(self, ctx, page=4)
+        elif len(parse_args) == 1:
+            if parse_args[0] == "help":
+                return await HelpCog.displayHelpCommand(self, ctx, page=4)
+            if parse_args[0] == "load":
+                return await self.loadChatHistory(ctx)
+            if parse_args[0] == "clear":
                 return await self.resetChatHistory(ctx)
+            if parse_args[0] == "prompt":
+                return await ctx.sendEmbed(self.get_chat_prompt(ctx), title="Current Prompt")
+            if parse_args[0] == "history":
+                return await self.viewChatHistory(ctx)
+            if parse_args[0] in ["token", "tokens"]:
+                return await ctx.sendEmbed(f"**Current Token Size:** {self.get_history_token_size(ctx)}")
+            if parse_args[0] == "resetprompt":
+                await self.chatResetSystemMessage(ctx)
+                return await self.resetChatHistory(ctx)
+            if f"{parse_args[0]}.txt" in self.bot.ai_prompts:
+                self.set_person_chat_prompt(ctx, parse_args[0])
+                return await ctx.sendEmbed(f"Activated ***{parse_args[0].capitalize()} Mode!***")
+        else:
+            if parse_args[0] == "help":
+                return await HelpCog.displayHelpCommand(self, ctx, page=4)
+            if parse_args[0] == "forget":
+                amount = 1 if len(parse_args) == 1 else parse_args[1]
+                return await self.forgetChatHistory(ctx, amount + 1)
+            if parse_args[0] == "setprompt":
+                if len(parse_args) > 1:
+                    await self.chatSetSystemMessage(ctx, ' '.join(parse_args[1:]))
+                    return await self.resetChatHistory(ctx)
+
         self.bot.saveData()
 
         prefix = self.bot.getPrefix(ctx)
@@ -117,8 +122,8 @@ class ChatCog(commands.Cog, Memory):
 
             """HERE WE CONSTRUCT THE DATA"""
             logging.info("parses data for memory")
-            temp_data = deepcopy(self.get_chat_history(ctx))
-            temp_data.append({"role": "user", "content": user_input})
+            temp_data = self.turn_default_to_prompt(ctx, self.get_chat_history(ctx))
+            self.add_chat_user(ctx, user_input, temp_data)
             temp_data = self.handle_resizing_memory(ctx, temp_data)
 
             """GET FORMATTED RESPONSE"""
@@ -224,7 +229,11 @@ class ChatCog(commands.Cog, Memory):
     async def chatResetSystemMessage(self, ctx):
         if "chatgpt-system-message" in self.bot.getChannel(ctx):
             del self.bot.getChannel(ctx)["chatgpt-system-message"]
-            await ctx.send(newEmbed(f"I have reset the system prompt to:\n**{self.get_chat_prompt(ctx)}**"))
+            prompt = self.get_chat_prompt(ctx)
+            if prompt == "default":
+                await ctx.send(newEmbed(f"I am already using my default prompt, so no need to reset it!"))
+            else:
+                await ctx.send(newEmbed(f"I have reset the system prompt to:\n**{self.get_chat_prompt(ctx)}**"))
         else:
             return await ctx.sendError(f"My prompt is already:\n**{self.get_chat_prompt(ctx)}**")
 
@@ -232,7 +241,7 @@ class ChatCog(commands.Cog, Memory):
         if not content:
             return await ctx.sendError("Cannot set the system prompt to an empty message!")
 
-        content = self.bot.getChannel(ctx).get("chatgpt-system-message", None)
+        self.bot.getChannel(ctx)["chatgpt-system-message"] = content
         await ctx.sendEmbed(f"Set system prompt to: \n**{content}**")
 
 

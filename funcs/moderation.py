@@ -24,7 +24,7 @@ async def testModeration(self, ctx, user_input: str, response: str = "") -> bool
 
     temp_response = removeSymbols(response)
     data = f"{user_input}\n{temp_response}"
-    metrics = await self.bot.ai.getModeration(data)
+    status, metrics = await self.bot.ai.getModeration(data)
     color = discord.Color.from_rgb(0, 0, 0)
 
     categories = metrics["results"][0]["category_scores"]
@@ -69,5 +69,17 @@ async def testModeration(self, ctx, user_input: str, response: str = "") -> bool
                              color=color)
             await ctx.send(embed, reference=True)
             return True
+
+    # checks for bad words
+    if not ctx.nsfw:
+        text = user_input.lower()
+        for i in ",. *()-_+'<>/?!`":
+            text = text.replace(i, "")
+        for word in self.bot.badwords:
+            if word in text:
+                embed = newEmbed("My answer contains a forbidden word. Try again in an NSFW channel.",
+                                 color=color)
+                await ctx.send(embed, reference=True)
+                return True
 
     return False

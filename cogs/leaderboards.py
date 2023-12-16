@@ -50,9 +50,9 @@ class LeaderBoardsCog(commands.Cog):
             "someone": ["@someone", "@Someone"]
         }
         if key not in keys:
-            return
+            prefix = self.bot.getPrefix(ctx)
+            return await ctx.send(f"There is no '{key}' leaderboard, try '{prefix}help leaderboard' for more info!")
         keys = keys[key]
-        print(keys[0])
         await self.globalLeaderboardObject(ctx, keys[0], title.format(keys[1]), amount)
 
     def getAmount(self, amount=None):
@@ -71,6 +71,7 @@ class LeaderBoardsCog(commands.Cog):
         amount = self.getAmount(amount)
         for n, user in enumerate(users):
             key, value = user
+            print(value[dict_key]["total_uses"])
             if n >= amount + 1 or value[dict_key]["total_uses"] == 0:
                 break
             table.append([value[dict_key]["total_uses"], f"<@{key}>"])
@@ -132,17 +133,18 @@ class LeaderBoardsCog(commands.Cog):
 
     async def globalLeaderboardObject(self, ctx, dict_key="ai", title="", maximum_users=None):
         items = [i for i in self.bot.data["users"].items() if dict_key in i[1]]
+        if len(items) == 0:
+            return await ctx.sendError(self.empty_message.format(self.bot.getPrefix(ctx), dict_key))
+
         users = sorted(items,
                        key=lambda x: x[1][dict_key]["total_uses"],
                        reverse=True)
-        print(users)
         table = []
         maximum_users = self.getAmount(maximum_users)
         for n, (key, value) in enumerate(users):
             if n >= maximum_users or value[dict_key]["total_uses"] == 0:
                 break
             table.append([value[dict_key]["total_uses"], f"<@{key}>"])
-        print(table)
         leaderboard = makeTable(table, show_index=True, code=[0])
 
         await ctx.send(newEmbed(leaderboard, title=title))
