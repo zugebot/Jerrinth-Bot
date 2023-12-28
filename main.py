@@ -69,15 +69,22 @@ async def on_guild_remove(guild: discord.Guild):
 async def on_member_join(member) -> None:
     """If someone joins my main server, ping them and try to get them to stay lol"""
     if member.guild.id == Jerrinth.settings["server_main"]:
-        channel = Jerrinth.get_channel(970214072052240424)
-        await channel.send(f"Welcome {member.mention}!"
-                           f"\nTry using my **,ai** command! Ask me anything!"
-                           f"\n"
-                           f"\n")
+        return
+        # channel = Jerrinth.get_channel(970214072052240424)
+        # await channel.send(f"Welcome {member.mention}!"
+        #                    f"\nTry using my **,ai** command! Ask me anything!"
+        #                    f"\n"
+        #                    f"\n")
 
+
+EMOJIS_2048_RUNS = ["🤡", ":clown:"]
+SERVER_2048_RUNS = 490493858401222656
 
 @Jerrinth.event
 async def on_raw_reaction_add(payload):
+    if payload.guild_id is None:
+        return
+
     async def addRole(emoji, role):
         if str(payload.emoji) == emoji:
             role = discord.utils.get(payload.member.guild.roles, name=role)
@@ -89,13 +96,20 @@ async def on_raw_reaction_add(payload):
         await addRole("🚗", "Random Ping Enjoyer")
         await addRole("⏰", "Jerrin Video Enjoyer")
 
+    if payload.guild_id == SERVER_2048_RUNS:
+        if str(payload.emoji) in EMOJIS_2048_RUNS:
+            channel = Jerrinth.get_channel(payload.channel_id)
+            message = await channel.fetch_message(payload.message_id)
+            user = Jerrinth.get_user(payload.user_id)
+            await message.remove_reaction(str(payload.emoji), user)
+
 
 @Jerrinth.event
 async def on_raw_reaction_remove(payload):
     async def removeRole(_guild, emoji, role):
         if payload.emoji.name == emoji:
             role = discord.utils.get(guild.roles, name=role)
-            member = discord.utils.find(lambda m: m.id == payload.user_id, _guild.members)
+            member = await discord.utils.find(lambda m: m.id == payload.user_id, _guild.members)
             if member is not None:
                 await member.remove_roles(role)
 
@@ -122,6 +136,12 @@ async def on_message(message: discord.Message) -> None:
                 return
 
     text = ctx.message.content.lower().replace(" ", "")
+
+    # remove clown emojis from 2048 server
+    if ctx.server == SERVER_2048_RUNS:
+        for emoji in EMOJIS_2048_RUNS:
+            if emoji in text:
+                await ctx.message.delete()
 
     # prevent collision with another bot
     if "heypeter" in text:

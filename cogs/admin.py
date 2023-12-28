@@ -19,7 +19,7 @@ class AdminCog(commands.Cog):
     @commands.has_permissions(administrator=True)
     @ctx_wrapper
     async def clearCommand(self, ctx, amount: int or None):
-        amount = argParseInt(amount)
+        amount = argParseInt(amount) + 1
         if amount is None:
             return await ctx.sendEmbed(f"You must specify an amount between 1 and {self.message_delete_cap}.")
         elif amount == 0:

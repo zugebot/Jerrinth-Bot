@@ -508,8 +508,10 @@ class ctxObject:
             if ctx.guild is not None:
                 self.server = str(ctx.guild.id)
                 self.serverInt = ctx.guild.id
-                self.nsfw = ctx.channel.nsfw
-
+                try:
+                    self.nsfw = ctx.channel.nsfw
+                except:
+                    ""
             self.user = str(ctx.author.id)
             self.userInt = ctx.author.id
 
