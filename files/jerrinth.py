@@ -2,6 +2,7 @@
 
 # native imports
 import os
+from datetime import datetime
 
 # custom imports
 from files.support import *
@@ -11,8 +12,8 @@ from funcs.ai import AI
 from funcs.imgur import Imgur
 
 
-
 class JerrinthBot(commands.Bot, DataManager):
+
     def __init__(self, data_version: int,
                  debug: bool = False,
                  maintenance: bool = False,
@@ -23,7 +24,6 @@ class JerrinthBot(commands.Bot, DataManager):
 
         script_path = os.path.abspath(__file__)
         self.directory = os.path.dirname(os.path.dirname(script_path)).replace("\\", "/") + "/"
-
 
         commands.Bot.__init__(
             self,
@@ -68,6 +68,12 @@ class JerrinthBot(commands.Bot, DataManager):
         if self.settings["discord_token"] is None:
             raise Exception("No discord token found in ~/data/settings.json.")
 
+        # server specific nonsense
+        self.hooks_on_raw_reaction_add = {}
+        self.hooks_on_raw_reaction_remove = {}
+        self.hooks_on_member_join = {}
+        self.hooks_on_message = {}
+
         # prepare packages
         self.nsp = NumericStringParser()
         self.imgur = Imgur(self)
@@ -105,3 +111,88 @@ class JerrinthBot(commands.Bot, DataManager):
         if message.content.startswith(",reload"):
             return ","
         return self.data["servers"][str(message.guild.id)]["prefix"]
+
+    async def on_member_join(self, member) -> None:
+        if member.guild.id is None:
+            return
+
+        func = self.hooks_on_member_join.get(member.guild_id, None)
+        if callable(func):
+            await func(member)
+
+    async def on_raw_reaction_add(self, payload):
+        if payload.guild_id is None:
+            return
+
+        func = self.hooks_on_raw_reaction_add.get(payload.guild_id, None)
+        if callable(func):
+            await func(payload)
+
+    async def on_raw_reaction_remove(self, payload):
+        if payload.guild_id is None:
+            return
+
+        func = self.hooks_on_raw_reaction_remove.get(payload.guild_id, None)
+        if callable(func):
+            await func(payload)
+
+    async def on_guild_join(self, guild: discord.Guild):
+        private_log = self.get_channel(self.settings["channel_private"])
+        self.ensureServerExists(guild.id, guild.name)
+        self.getServer(guild.id).pop("presence", None)
+
+        # if it is the first server, save the server to the settings
+        if len(self.guilds) == 1:
+            self.settings["server_main"] = guild.id
+            self.saveSettings()
+
+        embed = newEmbed()
+        if guild.icon is not None:
+            embed.set_thumbnail(url=guild.icon.url)
+
+        embed.add_field(name="Joined a server!",
+                        inline=False,
+                        value=f"Name: **{guild.name}**" \
+                              f"\nMember Count: **{guild.member_count}**" \
+                              f"\nChannel Count: **{len(guild.channels)}**" \
+                              f"\nCreated On: <t:{int(datetime.timestamp(guild.created_at))}>"
+                        )
+        await private_log.send(embed=embed)
+
+    async def on_guild_remove(self, guild: discord.Guild):
+        await self.wait_until_ready()
+        private_log = self.get_channel(self.settings["channel_private"])
+        self.ensureServerExists(guild.id, guild.name)
+        self.getServer(guild.id)["presence"] = False
+
+        embed = newEmbed(color=discord.Color.blue())
+
+        embed.add_field(name="I was removed from a server...",
+                        inline=False,
+                        value=f"Name: **{guild.name}**" \
+                              f"\nMember Count: **{guild.member_count}**" \
+                              f"\nChannel Count: **{len(guild.channels)}**"
+                        )
+        await private_log.send(embed=embed)
+
+
+    async def on_ready(self) -> None:
+        """
+        Loads all cogs, and prints startup message to console.
+        Prepares the Imgur library.
+        """
+        await self.imgur.loadRandomImages()
+
+        print("\nCogs:")
+        for filename in os.listdir(self.directory + "cogs"):
+            if filename.endswith(".py"):
+                await self.load_extension(f"cogs.{filename[:-3]}")
+                print(f"loaded cogs.{filename[:-3]}")
+
+        print("\nServer Specific:")
+        for filename in os.listdir(self.directory + "cogs/servers"):
+            if filename.endswith(".py"):
+                await self.load_extension(f"cogs.servers.{filename[:-3]}")
+                print(f"loaded cogs.servers.{filename[:-3]}")
+
+        print("\nStart up successful!")

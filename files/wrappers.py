@@ -9,7 +9,7 @@ from files.support import *
 
 
 def is_jerrin(func):
-    discord_id = 611427346099994641 # jerrinth3glitch#6280
+    discord_id = 611427346099994641  # jerrinth3glitch#6280
 
     @functools.wraps(func)
     async def wrapper(*args, **kwargs):

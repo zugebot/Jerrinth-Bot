@@ -49,9 +49,14 @@ class LeaderBoardsCog(commands.Cog):
             "play": ["play", "Play"],
             "someone": ["@someone", "@Someone"]
         }
+        if board is None:
+            prefix = self.bot.getPrefix(ctx)
+            return await ctx.send(f"You must specify a leaderboard type, try '{prefix}help leaderboard' for more info!")
+
         if key not in keys:
             prefix = self.bot.getPrefix(ctx)
             return await ctx.send(f"There is no '{key}' leaderboard, try '{prefix}help leaderboard' for more info!")
+
         keys = keys[key]
         await self.globalLeaderboardObject(ctx, keys[0], title.format(keys[1]), amount)
 

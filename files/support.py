@@ -4,7 +4,7 @@
 import os
 import json
 import discord
-from discord import ext
+from discord import ext, RawReactionActionEvent
 from discord.ext import commands
 import re
 import random
@@ -501,10 +501,22 @@ def cap(args: str or list or tuple) -> str or list or tuple:
 class ctxObject:
     def __init__(self, ctx, **kwargs):
         self.super: discord.ext.commands.Context = ctx
-        self.channel = str(ctx.channel.id)
-        self.channelInt = ctx.channel.id
 
-        if isinstance(ctx, discord.message.Message):
+
+        if isinstance(ctx, RawReactionActionEvent):
+            self.channel = str(ctx.channel_id)
+            self.channelInt = ctx.channel_id
+            self.user = str(ctx.user_id)
+            self.userInt = ctx.user_id
+            self.author = ctx.user_id
+            self.message = ctx
+            self.server = str(ctx.guild_id)
+            self.serverInt = ctx.guild_id
+
+
+        elif isinstance(ctx, discord.message.Message):
+            self.channel = str(ctx.channel.id)
+            self.channelInt = ctx.channel.id
             if ctx.guild is not None:
                 self.server = str(ctx.guild.id)
                 self.serverInt = ctx.guild.id
@@ -519,6 +531,8 @@ class ctxObject:
             self.message = ctx
 
         elif isinstance(ctx, discord.ext.commands.context.Context):
+            self.channel = str(ctx.channel.id)
+            self.channelInt = ctx.channel.id
             self.message = ctx.message
 
             if ctx.message.guild is not None:
