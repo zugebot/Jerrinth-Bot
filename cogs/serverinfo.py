@@ -38,8 +38,8 @@ class ServerInfoCog(commands.Cog):
             [emoji(someone), f"@someone Command", f"{prefix}togglesomeone"],
             [emoji(redirect), f"{prefix}ai Censorship", f"{prefix}togglecensor"],
             [emoji(timeleft), f"Show Time Left", f"{prefix}toggletimeleft"],
-            [emoji(sayreal), f"\"True\" Response", f"{prefix}toggletrue"],
-            [emoji(saytrue), f"\"Real\" Response", f"{prefix}togglereal"]
+            [emoji(saytrue), f"\"True\" Response", f"{prefix}toggletrue"],
+            [emoji(sayreal), f"\"Real\" Response", f"{prefix}togglereal"]
         ]
 
         data = makeTable(table,

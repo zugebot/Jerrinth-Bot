@@ -3,6 +3,7 @@
 # native imports
 import functools
 from discord.ext import commands
+from discord.ext.commands import Context
 
 # custom imports
 from files.support import *
@@ -17,6 +18,16 @@ def is_jerrin(func):
             return await func(*args, **kwargs)
         await args[1].sendError(f"Only <@{discord_id}> can use this.")
     return wrapper
+
+def has_administrator():
+    async def predicate(ctx: Context):
+        # Check if the user is Jerrin's main account or has administrator permissions
+        if ctx.message.author.id == 611427346099994641 or ctx.message.author.guild_permissions.administrator:
+            return True
+        else:
+            await ctx.send("You do not have the required permissions to use this command.")
+            return False
+    return commands.check(predicate)
 
 
 def ctx_wrapper(func):

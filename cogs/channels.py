@@ -8,14 +8,12 @@ from files.support import *
 from files.jerrinth import JerrinthBot
 
 
-
 class ChannelsCog(commands.Cog):
     def __init__(self, bot):
         self.bot: JerrinthBot = bot
 
-
     @commands.command(name="channelengine", aliases=["ce"])
-    @commands.has_permissions(administrator=True)
+    @has_administrator()
     @ctx_wrapper
     async def setChannelEngineCommand(self, ctx, engineArg: str = ""):
 
@@ -44,15 +42,15 @@ class ChannelsCog(commands.Cog):
 
         else:
             await ctx.sendError(f"**'{engineArg}'** is not a valid engine number!", reference=True)
+
     @setChannelEngineCommand.error
     @ctx_wrapper
     async def setChannelEngineCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.send("Only admins can set a channel engine!")
 
-
     @commands.command(name="addchannel", aliases=["ac"])
-    @commands.has_permissions(administrator=True)
+    @has_administrator()
     @ctx_wrapper
     async def addChannelCommand(self, ctx, channel=None):
         channel = argParsePing(channel, excluded=["all"])
@@ -64,15 +62,15 @@ class ChannelsCog(commands.Cog):
         else:
             desc = f"I already watch over <#{ctx.channel}>."
         await ctx.send(desc)
+
     @addChannelCommand.error
     @ctx_wrapper
     async def addChannelCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.send("Only admins can add channels to my scope!")
 
-
     @commands.command(name="delchannel", aliases=["dc"])
-    @commands.has_permissions(administrator=True)
+    @has_administrator()
     @ctx_wrapper
     async def deleteChannelCommand(self, ctx, channel=None):
         channel = argParsePing(channel, excluded=["all"])
@@ -98,7 +96,6 @@ class ChannelsCog(commands.Cog):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.send("Only admins can remove channels to my scope!")
 
-
     @commands.command(name="channels", aliases=["c"])
     @ctx_wrapper
     async def channelsCommand(self, ctx, redirect=False):
@@ -111,7 +108,6 @@ class ChannelsCog(commands.Cog):
         if server.get("usable_everywhere", False):
             return await ctx.send(newEmbed(f"**No need to list channels, for I am usable in all!**\n"
                                            f"If you want to turn this off, use {prefix}omni"))
-
 
         field_title = "Channels" if channels else "Channels Usable (Empty!)"
 
@@ -130,7 +126,6 @@ class ChannelsCog(commands.Cog):
         embed.add_field(name=field_title, inline=False, value=text)
 
         await ctx.send(embed, reference=True)
-
 
     @commands.command(name="omni", aliases=["OMNI", "Omni"])
     @ctx_wrapper

@@ -1,4 +1,9 @@
 # Jerrin Shirks
+import asyncio
+import atexit
+import signal
+import sys
+import threading
 
 # native imports
 
@@ -13,12 +18,52 @@ class DataManager:
         self.data_version = version
         self.data = read_json(self.data_file)
 
+        self.lock = threading.Lock()
+        self.is_saving = False
+        self.shutdown_requested = False
+        signal.signal(signal.SIGINT, self.signal_handler)
+
+
+
     # save function
+    """
     def saveData(self, data: dict = None) -> bool:
         if data is None:
             data = self.data
         return save_json(self.data_file, data)
+    """
 
+    def saveData(self, data: dict = None) -> bool:
+        with self.lock:
+            self.is_saving = True
+            if self.shutdown_requested:
+                # Handle the case where shutdown is requested while saveData is about to start
+                return False
+
+            if data is None:
+                data = self.data
+
+            try:
+                with open(self.data_file, 'w') as file:
+                    json.dump(data, file)
+                return True
+            except Exception as e:
+                print(f"Error saving data: {e}")
+                return False
+            finally:
+                self.is_saving = False
+                if self.shutdown_requested:
+                    self.shutdown_now()
+
+    def signal_handler(self, signum, frame):
+        print("SIGINT received. Preparing to shutdown...")
+        self.shutdown_requested = True
+        if not self.is_saving:
+            self.shutdown_now()
+
+    def shutdown_now(self):
+        print("Shutting down...")
+        sys.exit(0)
 
     # ensure functions
     def ensureServerExists(self, ctx: ctxObject or str or int, name=None) -> bool:

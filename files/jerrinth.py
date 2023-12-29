@@ -1,5 +1,5 @@
 # Jerrin Shirks
-
+import asyncio
 # native imports
 import os
 from datetime import datetime
@@ -10,6 +10,7 @@ from files.data_manager import DataManager
 from funcs.nsp import NumericStringParser
 from funcs.ai import AI
 from funcs.imgur import Imgur
+
 
 
 class JerrinthBot(commands.Bot, DataManager):
@@ -37,6 +38,9 @@ class JerrinthBot(commands.Bot, DataManager):
                              filename=self.directory + "data/data.json",
                              version=data_version
                              )
+
+
+
 
         # fields
         self.debug = debug

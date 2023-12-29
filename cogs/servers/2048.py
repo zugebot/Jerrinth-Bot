@@ -32,12 +32,15 @@ class Server2048RunsCog(commands.Cog):
 
 
     @commands.command(name='warnings', aliases=['Warnings', 'WARNINGS'])
+    @discord.ext.commands.cooldown(1, 180, commands.BucketType.guild)
     @ctx_wrapper
     async def warningsCommand(self, ctx: ctxObject):
         if ctx.serverInt not in self.SERVER_IDS:
             return
 
+        size = 5
         dict_key = "2048"
+
         items = [i for i in self.bot.getUserDict(ctx).items() if dict_key in i[1]]
         if len(items) == 0:
             return await ctx.sendError("There have been no warnings in this server...")
@@ -52,7 +55,7 @@ class Server2048RunsCog(commands.Cog):
                 break
             table.append([f"{value[dict_key]['warns']} of 5", f"<@{key}>"])
 
-        sects = [table[i:i + 10] for i in range(0, len(table), 10)]
+        sects = [table[i:i + size] for i in range(0, len(table), size)]
         embeds = []
         for n, sect in enumerate(sects):
             text = makeTable(sect, code=[0], sep={0: " - "})
@@ -76,6 +79,8 @@ class Server2048RunsCog(commands.Cog):
     @commands.has_permissions(administrator=True)
     @ctx_wrapper
     async def _2048warnCommand(self, ctx: ctxObject, user=None):
+        original_user = ctx.userInt
+
         if ctx.serverInt not in self.SERVER_IDS:
             return
 
@@ -117,6 +122,9 @@ class Server2048RunsCog(commands.Cog):
             await ctx.message.add_reaction("❌")
             return
 
+        if number < 0:
+            number = 0
+
         if number > 4:
             return await ctx.sendError("Cannot set warning level to max, for that would be an immediate ban. Ban them"
                                        " yourselves!")
@@ -142,7 +150,6 @@ class Server2048RunsCog(commands.Cog):
             content += "\nThis resulted in them being kicked."
         embed = newEmbed(content)
         await channel.send(embed=embed)
-
 
     @_2048setwarnCommand.error
     async def _2048setwarnCommandError(self, ctx, error):
@@ -177,8 +184,10 @@ class Server2048RunsCog(commands.Cog):
             return None
         return guild.get_member(user_id)
 
-    async def addWarning(self, ctx: ctxObject, emoji=None, admin_did_it=False):
+    async def addWarning(self, ctx: ctxObject, emoji=None, admin_did_it=False, reaction=False, context=""):
         self.ensureUser2048Exists(ctx)
+        if self.bot.getUser(ctx)["2048"]["warns"] < 0:
+            self.bot.getUser(ctx)["2048"]["warns"] = 0
         self.bot.getUser(ctx)["2048"]["warns"] += 1
         self.bot.saveData()
         warnings = self.bot.getUser(ctx)["2048"]["warns"]
@@ -205,9 +214,10 @@ class Server2048RunsCog(commands.Cog):
                 await member.kick(reason="Consistently breaking the rules")
             except Exception as e:
                 if isinstance(e, discord.errors.Forbidden):
+                    await self.bot.get_channel(ctx.channelInt).send(embed=errorEmbed("I do not have valid permissions to kick..."))
                     return
 
-        elif warnings == 5:
+        elif warnings >= 5:
             message = "You have been **banned** by an admin." if admin_did_it else "You have been **banned** for " \
                                                                                    "using the {} emoji.".format(emoji)
             message += f"\n\nCurrent warning count: **{warnings}**."
@@ -218,6 +228,7 @@ class Server2048RunsCog(commands.Cog):
                 await member.ban(reason="Consistently breaking the rules")
             except Exception as e:
                 if isinstance(e, discord.errors.Forbidden):
+                    await self.bot.get_channel(ctx.channelInt).send(embed=errorEmbed("I do not have valid permissions to ban..."))
                     return
 
         # send log message
@@ -227,6 +238,12 @@ class Server2048RunsCog(commands.Cog):
             content += "\nThis resulted in them being kicked."
         if warnings == 5:
             content += "\nThis resulted in them being banned."
+
+        if reaction:
+            content += f"\n\nreacted with {emoji}."
+        if context != "":
+            content += f"\n\n**Message:**\n{content}"
+
         embed = newEmbed(content)
         await channel.send(embed=embed)
 
@@ -237,7 +254,7 @@ class Server2048RunsCog(commands.Cog):
         for emoji in self.EMOJIS:
             if emoji in text:
                 await ctx.message.delete()
-                await self.addWarning(ctx, emoji)
+                await self.addWarning(ctx, emoji, context=ctx.message)
 
     async def on_raw_reaction_add(self, payload):
         if str(payload.emoji) in self.EMOJIS:
@@ -246,9 +263,7 @@ class Server2048RunsCog(commands.Cog):
             user = self.bot.get_user(payload.user_id)
             await message.remove_reaction(str(payload.emoji), user)
             ctx: ctxObject = ctxObject(payload)
-            await self.addWarning(ctx, str(payload.emoji))
-
-
+            await self.addWarning(ctx, str(payload.emoji), reaction=True)
 
 async def setup(bot):
     await bot.add_cog(Server2048RunsCog(bot))

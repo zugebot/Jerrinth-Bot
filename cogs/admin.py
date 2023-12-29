@@ -16,7 +16,7 @@ class AdminCog(commands.Cog):
         self.message_delete_cap: int = 51
 
     @commands.command(aliases=['purge', 'delete'])
-    @commands.has_permissions(administrator=True)
+    @has_administrator()
     @ctx_wrapper
     async def clearCommand(self, ctx, amount: int or None):
         amount = argParseInt(amount) + 1
@@ -41,7 +41,7 @@ class AdminCog(commands.Cog):
             await ctx.send(f"Only admins can use ,clear!")
 
     @commands.command(name="server_ids")
-    @commands.has_permissions(administrator=True)
+    @has_administrator()
     @ctx_wrapper
     @is_jerrin
     async def listServerIdsCommand(self, ctx):
@@ -64,7 +64,7 @@ class AdminCog(commands.Cog):
         await ctx.send(message)
 
     @commands.command(name="servers_list")
-    @commands.has_permissions(administrator=True)
+    @has_administrator()
     @ctx_wrapper
     @is_jerrin
     async def sendServerListCommand(self, ctx):
@@ -93,7 +93,7 @@ class AdminCog(commands.Cog):
         await ctx.super.send(embed=embeds[0], view=menu)
 
     @commands.command(name="setprefix", aliases=["sp"])
-    @commands.has_permissions(administrator=True)
+    @has_administrator()
     @ctx_wrapper
     async def setPrefixCommand(self, ctx, *args):
 
@@ -112,8 +112,9 @@ class AdminCog(commands.Cog):
             await ctx.send("Only admins can change my command prefix!")
 
     @commands.command(name="togglecensor", aliases=["tc"])
-    @commands.has_permissions(administrator=True)
+    @has_administrator()
     @ctx_wrapper
+    @is_jerrin
     async def toggleCensorshipCommand(self, ctx):
         value = toggleDictBool(self.bot.getServer(ctx), "censorship", True)
         self.bot.saveData()
@@ -125,8 +126,9 @@ class AdminCog(commands.Cog):
             await ctx.send("Only admins can toggle my response censorship!")
 
     @commands.command(name="toggleredirect", aliases=["tr"])
-    @commands.has_permissions(administrator=True)
+    @has_administrator()
     @ctx_wrapper
+    @is_jerrin
     async def toggleRedirectCommand(self, ctx):
         value = toggleDictBool(self.bot.getServer(ctx), "channel_redirect", True)
         self.bot.saveData()
@@ -138,8 +140,9 @@ class AdminCog(commands.Cog):
             await ctx.send("Only admins can toggle the redirect message appearance!")
 
     @commands.command(name="togglesomeone", aliases=[])
-    @commands.has_permissions(administrator=True)
+    @has_administrator()
     @ctx_wrapper
+    @is_jerrin
     async def toggleSomeoneCommand(self, ctx):
         value = toggleDictBool(self.bot.getServer(ctx), "@someone", False)
         self.bot.saveData()
@@ -151,7 +154,7 @@ class AdminCog(commands.Cog):
             await ctx.send("Only admins can toggle @someone on or off!")
 
     @commands.command(name="toggletimeleft", aliases=["ttl"])
-    @commands.has_permissions(administrator=True)
+    @has_administrator()
     @ctx_wrapper
     async def toggleTimeLeftCommand(self, ctx):
         value = toggleDictBool(self.bot.getServer(ctx), "show_time_left", True)
@@ -164,15 +167,15 @@ class AdminCog(commands.Cog):
             await ctx.send("Only admins can toggle the time left display on or off!")
 
     @commands.command(name="togglereal", aliases=["toggleReal"])
-    @commands.has_permissions(administrator=True)
+    @has_administrator()
     @ctx_wrapper
     async def toggleRealCommand(self, ctx):
         value = toggleDictBool(self.bot.getServer(ctx), "say_real", True)
         self.bot.saveData()
-        if not value:
-            await ctx.sendEmbed("I will **no longer say real!**")
+        if not value:  # Changed this line
+            await ctx.sendEmbed("I now have a **25% chance to say real!**")
         else:
-            await ctx.sendEmbed("I now have a **20% chance to say real!**")
+            await ctx.sendEmbed("I will **no longer say real!**")
 
     @toggleRealCommand.error
     async def toggleTrueCommandError(self, ctx, error):
@@ -180,15 +183,15 @@ class AdminCog(commands.Cog):
             await ctx.send("Only admins can toggle the time left display on or off!")
 
     @commands.command(name="toggletrue", aliases=["toggleTrue"])
-    @commands.has_permissions(administrator=True)
+    @has_administrator()
     @ctx_wrapper
     async def toggleTrueCommand(self, ctx):
         value = toggleDictBool(self.bot.getServer(ctx), "say_true", True)
         self.bot.saveData()
         if not value:
-            await ctx.sendEmbed("I will **no longer say true!**")
+            await ctx.sendEmbed("I now have a **25% chance to say true!**")
         else:
-            await ctx.sendEmbed("I now have a **20% chance to say true!**")
+            await ctx.sendEmbed("I will **no longer say true!**")
 
     @toggleRealCommand.error
     async def toggleTrueCommandError(self, ctx, error):
@@ -206,7 +209,7 @@ class AdminCog(commands.Cog):
             await ctx.sendEmbed("Findseed no longer shows portal emojis!")
 
     @commands.command(name="getdata")
-    @commands.has_permissions(administrator=True)
+    @has_administrator()
     @ctx_wrapper
     async def sendDataCommand(self, ctx: ctxObject, user=None):
         ctx.updateUser(user)
