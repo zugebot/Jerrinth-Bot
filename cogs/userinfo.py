@@ -8,17 +8,14 @@ from files.wrappers import *
 from files.support import *
 
 
-
 class UserInfoCog(commands.Cog):
     def __init__(self, bot):
         self.bot: JerrinthBot = bot
 
-
     @commands.command(name="eyecount", aliases=["ec"])
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(var_types={0: "ping"}, redirect=True)
     async def showEyeCountCommand(self, ctx, user=None):
-        ctx.updateUser(argParsePing(user))
+        ctx.updateUser(user)
 
         user = self.bot.get_user(ctx.userInt)
         if user is None:
@@ -54,13 +51,13 @@ class UserInfoCog(commands.Cog):
         table1.reverse()
 
         table1 = makeTable(data=table1,
-                          boldCol=[],
-                          code=[0],
-                          sep={
-                              0: "",
-                              1: "- ",
-                          },
-                          direction="left")
+                           boldCol=[],
+                           code=[0],
+                           sep={
+                               0: "",
+                               1: "- ",
+                           },
+                           direction="left")
 
         eyes = data_user["findseed"]["eye_count"].copy()
         while eyes[-1] == 0:
@@ -84,10 +81,8 @@ class UserInfoCog(commands.Cog):
         embed.add_field(name="Other Stats", inline=True, value=table2)
         await ctx.send(embed)
 
-
     @commands.command(name="profile", aliases=["userinfo"])
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def profileCommand(self, ctx, user=None):
         ctx.updateUser(argParsePing(user))
 

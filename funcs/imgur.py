@@ -6,15 +6,18 @@ import ssl
 
 # custom imports
 from files.support import *
+
+
 # None
-
-
 
 
 class Imgur:
     def __init__(self, bot):
         self.bot = bot
         self.client_id = self.bot.settings["imgur_client_id"]
+
+        self.valid_id = self.client_id is not None
+
         self.header = "https://api.imgur.com/"
 
         self.data = {
@@ -27,9 +30,10 @@ class Imgur:
         self.album_link = "https://api.imgur.com/3/gallery/album/{}?client_id=" + self.client_id
         self.image_link = "https://api.imgur.com/3/image/{}?client_id=" + self.client_id
 
-
     # for ,findimg
     async def loadRandomImages(self):
+        if not self.valid_id:
+            return
         if len(self.data["random"]) < 3:
             async with aiohttp.ClientSession() as session:
                 async with session.get(self.random_link) as response:
@@ -37,6 +41,9 @@ class Imgur:
 
     # for ,findimg
     def getRandomImage(self, ctx) -> str or None:
+        if not self.valid_id:
+            return None
+
         while len(self.data["random"]) > 2:
             image = self.data["random"].pop(0)
             if image["is_ad"] or ((not ctx.nsfw) and image["is_mature"]):
@@ -44,27 +51,22 @@ class Imgur:
             return image
         return None
 
-
-    async def getAlbumDetails(self, album_id: str) -> dict:
+    async def __getAlbumDetails(self, album_id: str) -> dict:
         link = self.album_link.format(album_id)
         async with aiohttp.ClientSession() as session:
             async with session.get(link) as response:
                 return await response.json()
 
-
-
-    async def getImageDetails(self, image_id: str) -> dict:
+    async def __getImageDetails(self, image_id: str) -> dict:
         link = self.image_link.format(image_id)
         async with aiohttp.ClientSession() as session:
             async with session.get(link) as response:
                 return await response.json()
 
-
-
     # •
     async def createMessage(self, data: dict):
         if not data["is_album"]:
-            data = await self.getImageDetails(image_id=data["id"])
+            data = await self.__getImageDetails(image_id=data["id"])
             data = data["data"]
 
             # pprint.pprint(data)
@@ -79,29 +81,24 @@ class Imgur:
 
         else:
 
-            data = await self.getAlbumDetails(album_id=data["id"])
+            data = await self.__getAlbumDetails(album_id=data["id"])
             data = data["data"]
-
-            # print("#"*50)
-            # pprint.pprint(data)
-
-
-
 
             items = data["images"]
             length = len(items)
             pages = []
             for n, item in enumerate(items):
-                message = ""
                 title = ""
                 embed = newEmbed()
 
                 if item["description"]:
-                    embed.description = item["description"]
-                    # message += item["description"]
+                    desc = item["description"]
+                    if len(desc) > 100:
+                        desc = desc[:100] + "\n**...**"
+                    embed.description = desc
 
                 if data["images_count"] > 1:
-                    title += f"[{n+1}/{length}] "
+                    title += f"[{n + 1}/{length}] "
 
                 if data["title"]:
                     title += data['title']
@@ -112,31 +109,22 @@ class Imgur:
                     pages.append(embed)
 
                 if item["type"] == "image/gif":
-                    embed.set_image(url=item['gifv'])
+                    url = item['gifv'].replace('.gifv', 'gif')
+                    embed.set_image(url=url)
                     pages.append(embed)
 
                 if item["type"] == "video/mp4":
                     text = ""
                     if data["images_count"] != 1:
-                        text = f"**[{n+1}/{length}]** "
+                        text = f"**[{n + 1}/{length}]** "
                     if data["title"]:
                         text += f"**{data['title']}**\n"
                     text += item['link']
-                    pages.append(text) # [link, embed])
+                    pages.append(text)
 
             if data["images_count"] == 1:
                 return pages[0]
             return pages
-
-
-
-
-
-
-
-
-
-
 
     """
     @staticmethod
@@ -159,7 +147,6 @@ class Imgur:
             return await func(*args, **kwargs)
         return wrapper
     """
-
 
     async def loadGallery(self,
                           section="hot",
@@ -189,8 +176,6 @@ class Imgur:
                     data = await response.json()
                     self.data["gallery"][key] = data["data"]
 
-
-
     def getGalleryImage(self,
                         ctx,
                         section="hot",
@@ -218,7 +203,3 @@ class Imgur:
 
             return image
         return None
-
-
-
-

@@ -7,10 +7,8 @@ import math
 # custom imports
 from files.jerrinth import JerrinthBot
 from files.wrappers import *
-from files.support import *
 from files.config import *
-from funcs.moderation import *
-
+from old_code.moderation import *
 
 
 class FunCog(commands.Cog):
@@ -19,15 +17,14 @@ class FunCog(commands.Cog):
 
         self.eye_count = 12
 
-
     def prob_of_n_tens(self, n):
         numerator = math.comb(self.eye_count, n) * (9 ** (self.eye_count - n))
         denominator = 10 ** self.eye_count
         return numerator / denominator
 
+    """
     @commands.command(name='say', description='gg')
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def sayCommand(self, ctx):
         text = ctx.super.message.content
         text = removePings(text[5:], allowed=ctx.user)
@@ -41,10 +38,10 @@ class FunCog(commands.Cog):
         texts = splitStringIntoSegments(text)
         for text in texts:
             await ctx.send(text)
+    """
 
     @commands.command(name='8ball', description='Let the 8 Ball Predict!\n')
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def _8ballCommand(self, ctx, *args):
         """allows the user to get randomized responses from their questions from the magical 8ball."""
         if args:
@@ -53,18 +50,18 @@ class FunCog(commands.Cog):
             response = "🎱 " + random.choice(BAD_RESPONSES_8BALL)
         return await ctx.send(response)
 
+    """
     @commands.command(name='etest')
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def eyeTestCommand(self, ctx):
         eyes = self.bot.getUser(ctx)["findseed"]["eye_count"].copy()
-        z_score = sum([(eye_c - self.eye_mean)/self.eye_variance for eye_c in eyes])
+        z_score = sum([(eye_c - self.eye_mean) / self.eye_variance for eye_c in eyes])
         return await ctx.sendEmbed(f"Your Z-Score: {z_score}")
+    """
 
     @commands.command(name='findseed', description='Roll an end-portal eye count.\n')
     @discord.ext.commands.cooldown(*FINDSEED_COOLDOWN)
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def findseedCommand(self, ctx):
 
         self.bot.ensureUserExists(ctx)
@@ -91,18 +88,13 @@ class FunCog(commands.Cog):
         await ctx.send(message + f"<@{ctx.author.id}> → your seed is a **{eye_count}** eye.")
 
     @findseedCommand.error
-    @ctx_wrapper
+    @error_wrapper(use_cooldown=True)
     async def findseedCommandError(self, ctx, error):
-        if isinstance(error, commands.CommandOnCooldown):
-            if self.bot.getServer(ctx).get("show_time_left", True):
-                await ctx.send(f"Try again in **{error.retry_after:.3f}**s.")
-            else:
-                await ctx.super.message.add_reaction(convertDecimalToClock(error.retry_after / FINDSEED_COOLDOWN[1]))
+        pass
 
     @commands.command(name='someone', aliases=["SOMEONE"], description='Ping a random person!\n')
     @discord.ext.commands.cooldown(*SOMEONE_COOLDOWN)
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def pingSomeoneCommand(self, ctx):
 
         self.bot.ensureUserExists(ctx)
@@ -120,7 +112,7 @@ class FunCog(commands.Cog):
             await ctx.message.add_reaction("❌")
 
     @pingSomeoneCommand.error
-    @ctx_wrapper
+    @error_wrapper()
     async def pingSomeoneCommandError(self, ctx, error):
         if isinstance(error, commands.CommandOnCooldown):
             if self.bot.getServer(ctx).get("@someone", False):

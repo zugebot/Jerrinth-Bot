@@ -1,9 +1,9 @@
 # Jerrin Shirks
 
 # native imports
-from copy import deepcopy
 import time
 import io
+from copy import deepcopy
 
 # custom imports
 from files.jerrinth import JerrinthBot
@@ -13,14 +13,25 @@ from cogs.help import HelpCog
 
 from files.config import *
 
-from funcs.memory import Memory
-from funcs.moderation import testModeration
+from funcs.chatai import Memory, CHATAI
 
 
-class ChatCog(commands.Cog, Memory):
+# from funcs.memory import Memory
+# from old_code.moderation import testModeration
+
+
+class ChatCog(commands.Cog):
     def __init__(self, bot):
-        super().__init__(bot)
+        super().__init__()
         self.bot: JerrinthBot = bot
+        self.chatai = CHATAI()
+        self.MAX_TEXT_FILE_SIZE = 12288
+
+        prompt = self.bot.ai_prompt_dict.get("default", None)
+        if prompt is not None:
+            Memory.DEFAULT_PROMPT = prompt
+        else:
+            Memory.DEFAULT_PROMPT = "You are a helpful assistant."
 
     def ensureUserAIExists(self, ctx):
         self.bot.ensureUserExists(ctx)
@@ -29,12 +40,14 @@ class ChatCog(commands.Cog, Memory):
 
     @commands.command(name="chat", aliases=["<@856411268633329684>", "CHAT", "Chat", "cHAT"])
     @discord.ext.commands.cooldown(*CHAT_COOLDOWN)
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def chatCommand(self, ctx):
 
         self.ensureUserAIExists(ctx)
         self.bot.ensureChannelExists(ctx)
+
+        if " " not in ctx.message.content:
+            return await ctx.sendError("You gotta ask me something silly!")
 
         """PARSES INPUT TEXT"""
         user_input: str = removeFirstWord(ctx.message.content)
@@ -47,48 +60,61 @@ class ChatCog(commands.Cog, Memory):
                 b2 = "application/json" == content_types[0]
                 b3 = "charset=utf-8" == content_types[1]
                 if (b1 or b2) and b3:
-                    max_size = self.bot.settings["max-text-file-size"]
+                    max_size = self.MAX_TEXT_FILE_SIZE
                     if attachment.size > max_size:
                         await ctx.sendError(f"File size exceeds the maximum allowed size of {max_size} characters."
                                             f"\nI will ignore `{attachment.filename}`.")
                         continue
                     text_file = io.StringIO(str(await attachment.read()))
                     user_input += f"\n\nFilename:{attachment.filename}\n{text_file.getvalue().strip()}"
-                # else:
-                    # print(attachment.content_type)
-        # else:
-            # print("no attachments")
 
         parse_args = user_input.split()
 
+        if parse_args[0] == "load":
+            return await self.loadChatHistory(ctx)
 
         if len(parse_args) == 0:
-            return await HelpCog.displayHelpCommand(self, ctx, page=4)
+            return await HelpCog.displayHelpCommand(self, ctx.super, page=4)
         elif len(parse_args) == 1:
             if parse_args[0] == "help":
-                return await HelpCog.displayHelpCommand(self, ctx, page=4)
-            if parse_args[0] == "load":
-                return await self.loadChatHistory(ctx)
+                return await HelpCog.displayHelpCommand(self, ctx.super, page=4)
             if parse_args[0] == "clear":
                 return await self.resetChatHistory(ctx)
             if parse_args[0] == "prompt":
-                return await ctx.sendEmbed(self.get_chat_prompt(ctx), title="Current Prompt")
+                prompt = self.getPrompt(ctx)
+                segments = splitResponse(prompt, split_size=1000)
+
+                pages = [newEmbed(text=segment, title=f"Current Prompt {n + 1}/{len(segments)}")
+                         for n, segment in enumerate(segments)]
+                menu = ButtonMenu(pages, index=0, timeout=180)
+                try:
+                    await ctx.super.send(embed=pages[0], view=menu)
+                except discord.errors.Forbidden:
+                    return
+
+                return
             if parse_args[0] == "history":
                 return await self.viewChatHistory(ctx)
             if parse_args[0] in ["token", "tokens"]:
-                return await ctx.sendEmbed(f"**Current Token Size:** {self.get_history_token_size(ctx)}")
+                prompt = self.getPrompt(ctx)
+                return await ctx.sendEmbed(
+                    f"**Prompt Tokens:** {Memory.countTokens(Memory.DEFAULT_PROMPT if prompt == 'default' else prompt)}"
+                    f"\n**Total Tokens:** {self.getMemory(ctx).getHistoryTokenSize()}"
+                )
             if parse_args[0] == "resetprompt":
-                await self.chatResetSystemMessage(ctx)
-                return await self.resetChatHistory(ctx)
+                reset = await self.chatResetSystemMessage(ctx)
+                if reset:
+                    return await self.resetChatHistory(ctx)
+                return
             if f"{parse_args[0]}.txt" in self.bot.ai_prompts:
-                self.set_person_chat_prompt(ctx, parse_args[0])
+                self.setPersonChatPrompt(ctx, parse_args[0])
                 return await ctx.sendEmbed(f"Activated ***{parse_args[0].capitalize()} Mode!***")
         else:
-            if parse_args[0] == "help":
-                return await HelpCog.displayHelpCommand(self, ctx, page=4)
+            if parse_args[0] == "help":  # TODO
+                return await HelpCog.displayHelpCommand(self, ctx.super, page=4)
             if parse_args[0] == "forget":
                 amount = 1 if len(parse_args) == 1 else parse_args[1]
-                return await self.forgetChatHistory(ctx, amount + 1)
+                return await self.forgetChatHistory(ctx, amount)
             if parse_args[0] == "setprompt":
                 if len(parse_args) > 1:
                     await self.chatSetSystemMessage(ctx, ' '.join(parse_args[1:]))
@@ -109,59 +135,55 @@ class ChatCog(commands.Cog, Memory):
         """SEND DEBUGGING INPUT"""
         logging.info("debug text")
         if self.bot.getUser(ctx).get("debug", False):
-            message = f"```\nENGINE: {'chat-3.5-turbo'}" \
-                      f"\nTEXT  : {filterGarbage(user_input)[:25]}...```"
+            message = f"\nTEXT  : {filterGarbage(user_input)[:25]}...```"
             message = removePings(message, allowed=ctx.user)
             await ctx.send(message)
-
-        """LIMIT USER INPUT SIZE"""
-        user_input = f"<@{ctx.user}>: {user_input[:4050]}"
 
         """SHOW THE BOT TYPING WHILE DOING THE BELOW"""
         async with ctx.super.channel.typing():
 
             """HERE WE CONSTRUCT THE DATA"""
             logging.info("parses data for memory")
-            temp_data = self.turn_default_to_prompt(ctx, self.get_chat_history(ctx))
-            self.add_chat_user(ctx, user_input, temp_data)
-            temp_data = self.handle_resizing_memory(ctx, temp_data)
+
+            memory = self.getMemory(ctx)
+            temp_mem = Memory(deepcopy(memory.getMessages()))
+
+            prompt = self.getPrompt(ctx)
+            if prompt == "default":
+                temp_mem.addUser(f"{ctx.user}", user_input)
+            else:
+                temp_mem.addUser("", user_input)
+
+            temp_mem.resizeMemory()
 
             """GET FORMATTED RESPONSE"""
             logging.info("getting chat message!!!!")
-            status, response_dict = await self.bot.ai.getChat(temp_data)
-            try:
-                response = response_dict['choices'][0]['message']['content']
-            except Exception as e:
-                return await ctx.sendError(f"Something went wrong, Jerrin is working on a fix!\n"
-                                           f"Error: {e}\n{str(response_dict)}")
+            status, name, response = await self.chatai.getChat(temp_mem)
 
-            response = filterGarbage(response)
+            if not status:
+                return await ctx.send(errorEmbed(f"Error: {response}"))
+
+            response = f"{filterGarbage(response)}"
 
             """UPDATE USERDATA"""
             logging.info("update user data")
-            try:
-                user = self.bot.getUser(ctx)["ai"]
-                user["total_uses"] += 1
-                user["last_use"] = time.time()
-                user["prompt_tokens"] += response_dict["usage"]["prompt_tokens"]
-                user["completion_tokens"] += response_dict["usage"]["completion_tokens"]
-                user["total_tokens"] += response_dict["usage"]["total_tokens"]
-            except Exception as e:
-                print("Error updating user data")
-                return await ctx.sendError(f"Please try again!\nAn unknown error occurred.\nError: {e}")
+            user = self.bot.getUser(ctx)["ai"]
+            user["total_uses"] += 1
+            user["last_use"] = time.time()
             self.bot.saveData()
 
             """CODE THAT DEALS WITH CENSORING THE INPUT/OUTPUT"""
             logging.info("censorship")
-            status = await testModeration(self, ctx, user_input, response)
-            if status:
-                return
+            # status = await testModeration(self, ctx, user_input, response)
+            # if status:
+            #     return
 
             """UPDATES MESSAGE HISTORY OF CHATTING, IF THEY ARE USING THAT"""
-            self.add_chat_user(ctx, user_input)
-            self.add_chat_assistant(ctx, response)
+            memory.addUser(f"{ctx.user}", user_input)
+            memory.addAssistant(response)
+            memory.resizeMemory()
+            self.setMemory(ctx, memory)
             self.bot.saveData()
-            self.handle_resizing_memory(ctx)
 
             """SEND THE RESULTS"""
             logging.info("sending results")
@@ -171,29 +193,47 @@ class ChatCog(commands.Cog, Memory):
                 await ctx.send(segment, reference=(n == 0))
 
     @chatCommand.error
-    @ctx_wrapper
-    @cool_down_error
-    async def ChatCommandError(self, ctx, error):
-        pass
+    @error_wrapper()
+    async def chatCommandError(self, ctx, error):
+        await ctx.sendError("This command has been recently reworked."
+                            "\nPlease report this bug and the following error to my DMs:"
+                            f"\nError: {error.args}")
+
+    def getPrompt(self, ctx):
+        prompt = self.bot.getChannel(ctx).get("chatgpt-system-message", "default")
+        return prompt
+
+    def getMemory(self, ctx) -> Memory:
+        return Memory(self.bot.getChannel(ctx).get("chatgpt-content", None))
+
+    def setMemory(self, ctx, memory: Memory) -> None:
+        self.bot.getChannel(ctx)["chatgpt-content"] = memory.getDict()
+
+    def setPersonChatPrompt(self, ctx, name):
+        with open(self.bot.directory + f"data/prompts/{name}.txt", "r", encoding='utf-8') as f:
+            self.bot.getChannel(ctx)["chatgpt-system-message"] = f.read()
 
     async def forgetChatHistory(self, ctx, amount: int = 1):
-        history = self.bot.getChannel(ctx).get("chatgpt-content", [])
+        memory = Memory(self.bot.getChannel(ctx).get("chatgpt-content", None))
 
-        if len(history) < 2:
+        if memory.getSize() < 2:
             return await ctx.sendError("There is nothing to forget silly!")
 
         amount = int(amount)
         for a in range(amount):
-            if len(history) < 2:
+            if memory.getSize() < 2:
                 break
-            history.pop(-1)
-        self.bot.getChannel(ctx)["chatgpt-content"] = history
+            memory.removeLast()
 
-        await ctx.sendEmbed(f"Removed {amount} messages from my memory of this channel!")
+        self.setMemory(ctx, memory)
+        await ctx.sendEmbed(f"Removed **{amount}** messages from my memory of this channel!")
 
+    # TODO: needs to be tested
     async def loadChatHistory(self, ctx):
         if not ctx.message.attachments:
-            return await ctx.sendError("BLANK")
+            prefix = self.bot.getPrefix(ctx)
+            return await ctx.sendError("You need to send a file named 'message_history.json' obtained from the "
+                                       f"**{prefix}chat history** command.")
 
         for attachment in ctx.message.attachments:
             filename = attachment.filename
@@ -212,30 +252,38 @@ class ChatCog(commands.Cog, Memory):
             await ctx.sendError(f"You didn't send any files called `message_history.json`."
                                 f"\nYou can get this file by using `{prefix}chat history`.")
 
-
+    # TODO: needs to be tested
     async def viewChatHistory(self, ctx):
-        data = self.get_chat_history(ctx)
-        if len(data) > 1:
-            file = io.BytesIO(json.dumps(data).encode('utf-8'))
-            await ctx.send("This is my message history!", file=discord.File(file, "message_history.json"))
-        else:
+        prompt = self.getPrompt(ctx)
+        memory = self.getMemory(ctx).getDict()
+        if len(memory) < 2:
             await ctx.sendError("There is no prior message history in this channel.")
+            return
+
+        memory[0]["content"] = prompt
+        file = io.BytesIO(json.dumps(memory).encode('utf-8'))
+        await ctx.send("This is my message history!", file=discord.File(file, "message_history.json"))
 
     async def resetChatHistory(self, ctx):
-        self.reset_chat_history(ctx)
+        if "chatgpt-content" in self.bot.getChannel(ctx):
+            del self.bot.getChannel(ctx)["chatgpt-content"]
         self.bot.saveData()
         await ctx.sendEmbed("I have cleared my history!")
 
-    async def chatResetSystemMessage(self, ctx):
+    # TODO: needs to be tested
+    async def chatResetSystemMessage(self, ctx) -> bool:
         if "chatgpt-system-message" in self.bot.getChannel(ctx):
             del self.bot.getChannel(ctx)["chatgpt-system-message"]
-            prompt = self.get_chat_prompt(ctx)
+            prompt = self.getPrompt(ctx)
             if prompt == "default":
                 await ctx.send(newEmbed(f"I am already using my default prompt, so no need to reset it!"))
+                return False
             else:
-                await ctx.send(newEmbed(f"I have reset the system prompt to:\n**{self.get_chat_prompt(ctx)}**"))
+                await ctx.send(newEmbed(f"I have reset the system prompt back to it's default."))
+                return True
         else:
-            return await ctx.sendError(f"My prompt is already:\n**{self.get_chat_prompt(ctx)}**")
+            await ctx.send(newEmbed(f"I am already using my default prompt, so no need to reset it!"))
+            return False
 
     async def chatSetSystemMessage(self, ctx, content):
         if not content:
@@ -243,8 +291,6 @@ class ChatCog(commands.Cog, Memory):
 
         self.bot.getChannel(ctx)["chatgpt-system-message"] = content
         await ctx.sendEmbed(f"Set system prompt to: \n**{content}**")
-
-
 
 
 async def setup(bot):

@@ -7,10 +7,8 @@ from datetime import datetime
 # custom imports
 from files.support import *
 from files.data_manager import DataManager
-from funcs.nsp import NumericStringParser
-from funcs.ai import AI
+from funcs.chatai import CHATAI, Memory
 from funcs.imgur import Imgur
-
 
 
 class JerrinthBot(commands.Bot, DataManager):
@@ -39,9 +37,6 @@ class JerrinthBot(commands.Bot, DataManager):
                              version=data_version
                              )
 
-
-
-
         # fields
         self.debug = debug
         self.maintenance = maintenance
@@ -50,7 +45,7 @@ class JerrinthBot(commands.Bot, DataManager):
         # settings
         self.settings_file = self.directory + "data/settings.json"
         self.settings = read_json(self.settings_file, EMPTY_SETTINGS)
-        self.logChannelID = self.settings["channel_log"]
+        self.logChannelID = self.settings["channel_log_dm"]
 
         # banned
         self.banned_users_file = self.directory + "data/banned.json"
@@ -78,16 +73,14 @@ class JerrinthBot(commands.Bot, DataManager):
         self.hooks_on_member_join = {}
         self.hooks_on_message = {}
 
-        # prepare packages
-        self.nsp = NumericStringParser()
+        # other stuff
         self.imgur = Imgur(self)
-        self.ai = AI(self)
 
     def begin(self):
         self.run(self.settings["discord_token"])
 
     def getLogChannel(self):
-        return self.get_channel(self.settings["channel_log"])
+        return self.get_channel(self.settings["channel_log_dm"])
 
     async def setup_hook(self) -> None:
         """ This is called when the bot boots, to set up the global commands """
@@ -120,7 +113,7 @@ class JerrinthBot(commands.Bot, DataManager):
         if member.guild.id is None:
             return
 
-        func = self.hooks_on_member_join.get(member.guild_id, None)
+        func = self.hooks_on_member_join.get(member.guild.id, None)
         if callable(func):
             await func(member)
 
@@ -141,14 +134,9 @@ class JerrinthBot(commands.Bot, DataManager):
             await func(payload)
 
     async def on_guild_join(self, guild: discord.Guild):
-        private_log = self.get_channel(self.settings["channel_private"])
+        private_log = self.get_channel(self.settings["channel_log_private"])
         self.ensureServerExists(guild.id, guild.name)
         self.getServer(guild.id).pop("presence", None)
-
-        # if it is the first server, save the server to the settings
-        if len(self.guilds) == 1:
-            self.settings["server_main"] = guild.id
-            self.saveSettings()
 
         embed = newEmbed()
         if guild.icon is not None:
@@ -156,16 +144,16 @@ class JerrinthBot(commands.Bot, DataManager):
 
         embed.add_field(name="Joined a server!",
                         inline=False,
-                        value=f"Name: **{guild.name}**" \
-                              f"\nMember Count: **{guild.member_count}**" \
-                              f"\nChannel Count: **{len(guild.channels)}**" \
+                        value=f"Name: **{guild.name}**"
+                              f"\nMember Count: **{guild.member_count}**"
+                              f"\nChannel Count: **{len(guild.channels)}**"
                               f"\nCreated On: <t:{int(datetime.timestamp(guild.created_at))}>"
                         )
         await private_log.send(embed=embed)
 
     async def on_guild_remove(self, guild: discord.Guild):
         await self.wait_until_ready()
-        private_log = self.get_channel(self.settings["channel_private"])
+        private_log = self.get_channel(self.settings["channel_log_private"])
         self.ensureServerExists(guild.id, guild.name)
         self.getServer(guild.id)["presence"] = False
 
@@ -173,12 +161,11 @@ class JerrinthBot(commands.Bot, DataManager):
 
         embed.add_field(name="I was removed from a server...",
                         inline=False,
-                        value=f"Name: **{guild.name}**" \
-                              f"\nMember Count: **{guild.member_count}**" \
+                        value=f"Name: **{guild.name}**"
+                              f"\nMember Count: **{guild.member_count}**"
                               f"\nChannel Count: **{len(guild.channels)}**"
                         )
         await private_log.send(embed=embed)
-
 
     async def on_ready(self) -> None:
         """

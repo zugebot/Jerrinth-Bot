@@ -12,9 +12,9 @@ class ChannelsCog(commands.Cog):
     def __init__(self, bot):
         self.bot: JerrinthBot = bot
 
+    """
     @commands.command(name="channelengine", aliases=["ce"])
-    @has_administrator()
-    @ctx_wrapper
+    @ctx_wrapper(user_req=1)
     async def setChannelEngineCommand(self, ctx, engineArg: str = ""):
 
         if engineArg == "":
@@ -42,16 +42,16 @@ class ChannelsCog(commands.Cog):
 
         else:
             await ctx.sendError(f"**'{engineArg}'** is not a valid engine number!", reference=True)
-
+    
     @setChannelEngineCommand.error
-    @ctx_wrapper
+    @error_wrapper()
     async def setChannelEngineCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.send("Only admins can set a channel engine!")
+    """
 
     @commands.command(name="addchannel", aliases=["ac"])
-    @has_administrator()
-    @ctx_wrapper
+    @ctx_wrapper(user_req=1)
     async def addChannelCommand(self, ctx, channel=None):
         channel = argParsePing(channel, excluded=["all"])
         ctx.updateChannel(channel)
@@ -64,14 +64,13 @@ class ChannelsCog(commands.Cog):
         await ctx.send(desc)
 
     @addChannelCommand.error
-    @ctx_wrapper
+    @error_wrapper()
     async def addChannelCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.send("Only admins can add channels to my scope!")
 
     @commands.command(name="delchannel", aliases=["dc"])
-    @has_administrator()
-    @ctx_wrapper
+    @ctx_wrapper(user_req=1)
     async def deleteChannelCommand(self, ctx, channel=None):
         channel = argParsePing(channel, excluded=["all"])
         ctx.updateChannel(channel)
@@ -91,13 +90,13 @@ class ChannelsCog(commands.Cog):
         await ctx.send(desc)
 
     @deleteChannelCommand.error
-    @ctx_wrapper
+    @error_wrapper()
     async def deleteChannelCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.send("Only admins can remove channels to my scope!")
 
     @commands.command(name="channels", aliases=["c"])
-    @ctx_wrapper
+    @ctx_wrapper()
     async def channelsCommand(self, ctx, redirect=False):
         self.bot.ensureServerExists(ctx)
         server = self.bot.getServer(ctx)
@@ -121,14 +120,14 @@ class ChannelsCog(commands.Cog):
         text = ""
         if channels:
             text = ", ".join([f"<#{channel}>" for channel in channels])
-        text = f"{text}Have an admin add a channel using **{prefix}addchannel**\n"
-        text = f"{text}Admins can also add all channels using **{prefix}omni**"
+        text = f"\n{text}admins can add a channel using **{prefix}addchannel**\n"
+        text = f"{text}they can also add all channels using **{prefix}omni**"
         embed.add_field(name=field_title, inline=False, value=text)
 
         await ctx.send(embed, reference=True)
 
     @commands.command(name="omni", aliases=["OMNI", "Omni"])
-    @ctx_wrapper
+    @ctx_wrapper(user_req=1)
     async def addAllChannels(self, ctx):
         server = self.bot.getServer(ctx)
         prefix = self.bot.getPrefix(ctx)

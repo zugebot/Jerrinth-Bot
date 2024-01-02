@@ -11,7 +11,6 @@ import threading
 from files.support import *
 
 
-
 class DataManager:
     def __init__(self, filename, version=0):
         self.data_file = filename
@@ -22,8 +21,6 @@ class DataManager:
         self.is_saving = False
         self.shutdown_requested = False
         signal.signal(signal.SIGINT, self.signal_handler)
-
-
 
     # save function
     """
@@ -103,7 +100,6 @@ class DataManager:
         self.saveData()
         return True
 
-
     # get functions
     def getServer(self, ctx: ctxObject or str or int) -> dict or None:
         if isinstance(ctx, int):
@@ -134,7 +130,6 @@ class DataManager:
             raise Exception(f"Invalid ctx type '{type(ctx)}'")
         return self.data["servers"][ctx.server]["users"].get(user, None)
 
-
     # bool functions
     def serverExists(self, ctx: ctxObject) -> bool:
         return ctx.server in self.data["servers"]
@@ -144,7 +139,6 @@ class DataManager:
 
     def userExists(self, ctx: ctxObject) -> bool:
         return ctx.user in self.data["servers"][ctx.server]["users"]
-
 
     # delete functions
     def deleteServer(self, ctx: ctxObject) -> bool:
@@ -168,7 +162,6 @@ class DataManager:
             return True
         return False
 
-
     # dict functions | getServerDict is unnecessary
     def getChannelDict(self, ctx: ctxObject) -> dict:
         return self.data["servers"][ctx.server]["channels"]
@@ -176,10 +169,11 @@ class DataManager:
     def getUserDict(self, ctx: ctxObject) -> dict:
         return self.data["servers"][ctx.server]["users"]
 
-
+    """
     # random functions
     def getUserEngine(self, ctx: ctxObject, num: int = 0) -> int:
         try:
             return self.getUser(ctx)["ai"].get("engine", num)
         except:
             return num
+    """

@@ -11,27 +11,29 @@ from files.jerrinth import JerrinthBot
 from files.wrappers import *
 from files.support import *
 from files.config import *
+from funcs.imgur import Imgur
 
 
 class ImgurCog(commands.Cog):
     def __init__(self, bot):
         self.bot: JerrinthBot = bot
-        sslcontext = ssl.create_default_context(cafile=certifi.where())
 
+        # sslcontext = ssl.create_default_context(cafile=certifi.where())
 
     def ensureUserImgurExists(self, ctx):
         self.bot.ensureUserExists(ctx)
         if self.bot.getUser(ctx).get("imgur", None) is None:
             self.bot.getUser(ctx)["imgur"] = EMPTY_IMGUR.copy()
 
-
     @commands.command(name="findimg", aliases=["FINDIMG"])
     @discord.ext.commands.cooldown(*FINDIMG_COOLDOWN)
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def findImageCommand(self, ctx):
 
         self.ensureUserImgurExists(ctx)
+
+        if not self.bot.imgur.valid_id:
+            return await ctx.sendError("My imgur key is invalid, this command will not work until one is added.")
 
         data = self.bot.imgur.getRandomImage(ctx)
         await self.bot.imgur.loadRandomImages()
@@ -42,11 +44,6 @@ class ImgurCog(commands.Cog):
         self.bot.getUser(ctx)["imgur"]["last_use"] = time.time()
         self.bot.saveData()
 
-        # pprint.pprint(data)
-        # input("waiting")
-
-
-        # await ctx.send(data["url"])
         message = await self.bot.imgur.createMessage(data)
         if isinstance(message, str):
             await ctx.send(message)
@@ -62,24 +59,13 @@ class ImgurCog(commands.Cog):
                 await ctx.send("Something went wrong with the interaction.")
 
     @findImageCommand.error
-    @ctx_wrapper
+    @error_wrapper(use_cooldown=True)
     async def findImageCommandError(self, ctx, error):
-        if isinstance(error, commands.CommandOnCooldown):
-            if self.bot.getServer(ctx).get("show_time_left", True):
-                await ctx.send(f"Try again in **{error.retry_after:.3f}**s.")
-            else:
-                await ctx.super.message.add_reaction(convertDecimalToClock(error.retry_after / FINDIMG_COOLDOWN[1]))
-        else:
-            await ctx.message.add_reaction("❌")
-
-
-
-
+        pass
 
     @commands.command(name="imgur", aliases=[])
     # @discord.ext.commands.cooldown(1, 4, commands.BucketType.guild)
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def imgurCommand(self, ctx, *args):
 
         self.ensureUserImgurExists(ctx)
@@ -88,16 +74,14 @@ class ImgurCog(commands.Cog):
 
         data = self.bot.imgur.getGalleryImage(ctx, *args)
 
-        pprint.pprint(data)
+        # pprint.pprint(data)
 
         message = await self.bot.imgur.createMessage(data)
 
         if isinstance(message, str):
             await ctx.send(message)
-
         elif isinstance(message, discord.embeds.Embed):
             await ctx.send(message)
-
         elif isinstance(message, list):
             menu = ButtonMenu(message, index=0, timeout=180)
             try:

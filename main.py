@@ -25,6 +25,7 @@ Jerrinth = JerrinthBot(data_version=1,
 @Jerrinth.event
 async def on_message(message: discord.Message) -> None:
     ctx: ctxObject = ctxObject(message)
+
     if ctx.message.author.bot:
         return
 
@@ -36,21 +37,26 @@ async def on_message(message: discord.Message) -> None:
 
     text = ctx.message.content.lower().replace(" ", "")
 
-    func = Jerrinth.hooks_on_message.get(ctx.serverInt, None)
-    if callable(func):
-        await func(message)
+    try:
+        func = Jerrinth.hooks_on_message.get(ctx.serverInt, None)
+        if callable(func):
+            await func(ctx)
+    except Exception as e:
+        print("Error: ", e)
+        # print(e)
+        # print(ctx.__dict__)
 
     # prevent collision with another bot
     if "heypeter" in text:
         return
 
-    if Jerrinth.direct_message:
+    """if Jerrinth.direct_message:
         # send dm-messages to log channel
         if isinstance(message.channel, discord.DMChannel):
             return await handleDMs(Jerrinth, ctx)
         # send log-messages to dms
         if message.channel.id == 1057516665992134777:
-            return await handleSendingDMs(Jerrinth, ctx, message)
+            return await handleSendingDMs(Jerrinth, ctx, message)"""
 
     Jerrinth.ensureServerExists(ctx)
 
@@ -101,7 +107,6 @@ async def on_command_error(ctx, error):
     # print(f"User: {ctx.user}")
     print(f"User Message: '{ctx.message.content}'")
     raise error
-
 
 
 Jerrinth.begin()

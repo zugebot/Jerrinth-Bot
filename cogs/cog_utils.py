@@ -14,8 +14,7 @@ class CogUtils(commands.Cog):
         self.bot: JerrinthBot = bot
 
     @commands.command(hidden=True)
-    @is_jerrin
-    @ctx_wrapper
+    @ctx_wrapper(user_req=2)
     async def loadCommand(self, ctx, module):
         """Loads a module."""
         try:
@@ -27,14 +26,14 @@ class CogUtils(commands.Cog):
                 await ctx.send('{}: {}'.format(type(e).__name__, e))
 
     @loadCommand.error
+    @error_wrapper()
     async def loadCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.sendError("Only admins can use this.")
 
     @commands.command(hidden=True)
-    @is_jerrin
-    @ctx_wrapper
-    async def unloadCommand(self, ctx: discord.ext.commands.Context, module):
+    @ctx_wrapper(user_req=2)
+    async def unloadCommand(self, ctx, module):
         """Unloads a module."""
         try:
             await self.bot.unload_extension(f"cogs.{module}")
@@ -45,14 +44,13 @@ class CogUtils(commands.Cog):
                 await ctx.send('{}: {}'.format(type(e).__name__, e))
 
     @unloadCommand.error
-    @ctx_wrapper
+    @error_wrapper()
     async def unloadCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.sendError("Only admins can use this.")
 
     @commands.command(name='reload', hidden=True)
-    @is_jerrin
-    @ctx_wrapper
+    @ctx_wrapper(user_req=2)
     async def reloadCommand(self, ctx, module):
         """Reloads a module."""
         try:
@@ -64,7 +62,7 @@ class CogUtils(commands.Cog):
                 await ctx.send('{}: {}'.format(type(e).__name__, e))
 
     @reloadCommand.error
-    @ctx_wrapper
+    @error_wrapper()
     async def reloadCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.sendError("Only admins can use this.")

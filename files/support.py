@@ -11,7 +11,6 @@ import random
 import logging
 from typing import List, Any, Union, Tuple
 
-
 FORMAT = '%(asctime)s %(message)s'
 logging.basicConfig(format=FORMAT, level=logging.WARNING)
 
@@ -100,6 +99,7 @@ def loadBadWords(filename):
         badwords[separate(badword.upper(), "-")] = 0
 
     return badwords
+
 
 BADWORDS_FILE = "data/badwords.txt"
 BADWORDS = loadBadWords(BADWORDS_FILE)
@@ -251,7 +251,7 @@ def makeTable(data,
 
     for index, item in enumerate(data):
         if show_index:
-            item.insert(0, f"{index+1}.".rjust(show_index_length))
+            item.insert(0, f"{index + 1}.".rjust(show_index_length))
 
         if len(item) < max_size:
             to_add = max_size - len(item)
@@ -306,9 +306,9 @@ def makeTable(data,
             is_code_block = seg_index in code
 
             # add the main part of the string
-            if direction == 0: # right
+            if direction == 0:  # right
                 seg_part += f"{str(segment).rjust(max_length_list[seg_index])}"
-            elif direction == 1: # left
+            elif direction == 1:  # left
                 seg_part += f"{str(segment).ljust(max_length_list[seg_index])}"
             elif direction == 2:  # center
                 seg_part += f"{str(segment).center(max_length_list[seg_index])}"
@@ -323,13 +323,12 @@ def makeTable(data,
 
             string += seg_part
 
-
             # add the spacer
             if seg_index < line_segments:
 
                 if seg_index in sep:
                     if data[index][seg_index + 1] is None:
-                        string += " "*len(sep[seg_index])
+                        string += " " * len(sep[seg_index])
                     else:
                         string += f"{sep[seg_index]}"
                 else:
@@ -348,7 +347,6 @@ RED = "\u001b[31m"
 RESET = "\u001b[0m"
 NOT_ADMIN_MESSAGE = "You do not have admin privileges."
 NOT_ADMIN_MESSAGE_1 = "You do not have permission to change this setting."
-
 
 RESPONSES_8BALL = ["It is certain.",
                    "It is decidedly so.",
@@ -380,14 +378,11 @@ EMPTY_SETTINGS = {
     "data_version": None,  # int
     "last_update": None,  # int
     # used for yes
-    "server_main": None,  # server id: int
-    "channel_log": None,  # channel id: int
-    "channel_private": None,  # channel id: int
+    "channel_log_dm": None,  # channel id: int
+    "channel_log_private": None,  # channel id: int
     # used for api's
     "imgur_client_id": None,  # token
-    "discord_token": None, # token
-    "openai_api_keys": [], # list[str]
-    "max_text_file_size": 12288 # int
+    "discord_token": None,  # token
 }
 
 EMPTY_SERVER = {
@@ -413,7 +408,7 @@ EMPTY_AI = {
 }
 
 EMPTY_PLAYRANDOM = {
-"total_uses": 0,
+    "total_uses": 0,
     "last_use": None
 }
 
@@ -445,8 +440,6 @@ EMPTY_ALL = {
     "@someone": EMPTY_SOMEONE.copy(),
     "playrandom": EMPTY_PLAYRANDOM.copy()
 }
-
-
 
 TIPS = [
     "I often give much better answers if you end your questions with the correct punctuation!",
@@ -485,7 +478,6 @@ SHOW_SYNTAX = [
     "",
 ]
 
-
 DEC_EMOJI = "⬅"
 INC_EMOJI = "➡"
 
@@ -502,7 +494,6 @@ class ctxObject:
     def __init__(self, ctx, **kwargs):
         self.super: discord.ext.commands.Context = ctx
 
-
         if isinstance(ctx, RawReactionActionEvent):
             self.channel = str(ctx.channel_id)
             self.channelInt = ctx.channel_id
@@ -512,7 +503,7 @@ class ctxObject:
             self.message = ctx
             self.server = str(ctx.guild_id)
             self.serverInt = ctx.guild_id
-
+            return
 
         elif isinstance(ctx, discord.message.Message):
             self.channel = str(ctx.channel.id)
@@ -521,14 +512,14 @@ class ctxObject:
                 self.server = str(ctx.guild.id)
                 self.serverInt = ctx.guild.id
                 try:
-                    self.nsfw = ctx.channel.nsfw
+                    self.nsfw = ctx.channel.nsfw_level
                 except:
-                    ""
+                    self.nsfw = 0
             self.user = str(ctx.author.id)
             self.userInt = ctx.author.id
-
             self.author = ctx.author
             self.message = ctx
+            return
 
         elif isinstance(ctx, discord.ext.commands.context.Context):
             self.channel = str(ctx.channel.id)
@@ -545,6 +536,10 @@ class ctxObject:
 
             self.author = ctx.message.author
             self.message = ctx.message
+            return
+
+        else:
+            print("want to kill myself", type(ctx))
 
         for kwarg in kwargs:
             if kwarg == "server":
@@ -647,6 +642,7 @@ class ButtonMenu(discord.ui.View):
         super().__init__(timeout=timeout)
         self.pages = pages
         self.user = user
+        self.message = None
 
         self.index = index
         self.length = len(pages)
@@ -654,11 +650,17 @@ class ButtonMenu(discord.ui.View):
     async def send(self, ctx):
         content, embeds, files = await self.getPage()
 
-        await ctx.super.send(
+        self.message = await ctx.super.send(
             content=content,
             embeds=embeds,
             view=self
         )
+
+    async def on_timeout(self):
+        if self.message:
+            await self.message.delete()
+
+        await super().on_timeout()
 
     async def getPage(self):
         page = self.pages[self.index]
@@ -686,7 +688,6 @@ class ButtonMenu(discord.ui.View):
                 raise TypeError("Can't have alternative files")
             """
             return tuple(items)
-
 
     async def showPage(self, interaction: discord.Interaction):
         content, embeds, files = await self.getPage()
@@ -816,38 +817,6 @@ def convertDecimalToClock(decimal: float = None) -> str:
     return clocks[index]
 
 
-def insert_zero(string):
-    """for use of ,solve"""
-    if "." not in string:
-        return string
-    result = ""
-    for i in range(len(string)):
-        if string[i] == "." and not string[i - 1].isdigit():
-            result += "0" + string[i]
-        elif i == 0 and string[i] == ".":
-            result += "0" + string[i]
-        else:
-            result += string[i]
-
-    return result
-
-
-def insert_star(string):
-    """for use of ,solve"""
-    if "(" not in string:
-        return string
-    new_str = ""
-    for i in range(len(string)):
-        if string[i].isdigit():
-            if string[i + 1] == "(":
-                new_str += string[i] + "*"
-            else:
-                new_str += string[i]
-        else:
-            new_str += string[i]
-    return new_str
-
-
 def removePings(string: str, allowed: List[str] = None) -> str:
     if allowed is None:
         allowed = []
@@ -877,7 +846,6 @@ def removePings(string: str, allowed: List[str] = None) -> str:
     return result
 
 
-
 def tryConvertToCodeBlock(content):
     languages = ["python", "c++", "java", "rust", "html", "javascript", "node",
                  "c#", "go", "dart", "haskell", "kotlin", "lua", "perl"]
@@ -890,10 +858,8 @@ def tryConvertToCodeBlock(content):
     return content
 
 
-
 def anti_markdown(content):
     pass
-
 
 
 def removeFirstWord(string):
@@ -977,6 +943,3 @@ def splitStringIntoSegments(input_string: str,
     # Add the remaining string to the list
     result.append(input_string)
     return result
-
-
-

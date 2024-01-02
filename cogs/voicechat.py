@@ -75,8 +75,7 @@ class VoiceChatCog(commands.Cog):
 
     @commands.command(name="join")
     @discord.ext.commands.cooldown(*VOICE_JOIN_COOLDOWN)
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def joinCommand(self, ctx):
         try:
             await ctx.super.author.voice.channel.connect()
@@ -84,54 +83,47 @@ class VoiceChatCog(commands.Cog):
             return await ctx.sendError("I am already being used in a different channel!")
 
     @joinCommand.error
-    @ctx_wrapper
-    @cool_down_error
+    @error_wrapper(use_cooldown=True)
     async def joinCommandError(self, ctx, error):
         pass
 
     @commands.command(name="leaveall")
-    @ctx_wrapper
-    @is_jerrin
+    @ctx_wrapper(user_req=1)
     async def leaveAllCommand(self, ctx):
         [await vc.disconnect(True) for vc in self.bot.voice_clients if not vc.is_playing()]
 
     @leaveAllCommand.error
-    @ctx_wrapper
+    @error_wrapper()
     async def leaveAllCommandError(self, ctx, error):
         pass
 
     @commands.command(name="leave")
     @discord.ext.commands.cooldown(*VOICE_LEAVE_COOLDOWN)
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def leaveCommand(self, ctx):
         await ctx.super.voice_client.disconnect()
 
     @leaveCommand.error
-    @ctx_wrapper
-    @cool_down_error
+    @error_wrapper(use_cooldown=True)
     async def leaveCommandError(self, ctx, error):
         pass
 
     @commands.command(name="stop")
     @discord.ext.commands.cooldown(*VOICE_LEAVE_COOLDOWN)
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def stopCommand(self, ctx):
         vc = await self.joinVC(ctx)
         if vc.is_playing():
             vc.stop()
 
     @stopCommand.error
-    @ctx_wrapper
-    @cool_down_error
+    @error_wrapper(use_cooldown=True)
     async def stopCommandError(self, ctx, error):
         pass
 
     @commands.command(name="meow")
     @discord.ext.commands.cooldown(*VOICE_QUICK_COOLDOWN)
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def meowCommand(self, ctx):
         if not ctx.author.voice:
             return await ctx.send("You're not in a voice channel.")
@@ -149,15 +141,13 @@ class VoiceChatCog(commands.Cog):
             await asyncio.sleep(1)
 
     @meowCommand.error
-    @ctx_wrapper
-    @cool_down_error
+    @error_wrapper(use_cooldown=True)
     async def meowCommandError(self, ctx, error):
         pass
 
     @commands.command(name="volume")
     @discord.ext.commands.cooldown(*VOICE_LEAVE_COOLDOWN)
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def volumeCommand(self, ctx, new_volume=None):
         if not ctx.super.author.voice:
             return await ctx.send("You're not in a voice channel.")
@@ -182,8 +172,7 @@ class VoiceChatCog(commands.Cog):
             await ctx.sendEmbed(f"Volume has been set to **{'%.0f' % new_volume}%**")
 
     @stopCommand.error
-    @ctx_wrapper
-    @cool_down_error
+    @error_wrapper(use_cooldown=True)
     async def volumeCommandError(self, ctx, error):
         pass
 
@@ -245,8 +234,7 @@ class VoiceChatCog(commands.Cog):
 
     @commands.command(name="play")
     @discord.ext.commands.cooldown(*VOICE_PLAY_COOLDOWN)
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def playCommand(self, ctx, url: str = None):
         if not ctx.author.voice:
             return await ctx.send("You're not in a voice channel.")
@@ -343,15 +331,13 @@ class VoiceChatCog(commands.Cog):
         await self.playAudio(ctx, vc, file_name)
 
     @playCommand.error
-    @ctx_wrapper
-    @cool_down_error
+    @error_wrapper(use_cooldown=True)
     async def playCommandError(self, ctx, error):
         pass
 
     @commands.command(name="playrandom")
     @discord.ext.commands.cooldown(*VOICE_PLAY_COOLDOWN)
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def playRandomCommand(self, ctx):
         if not ctx.author.voice:
             return await ctx.send("You're not in a voice channel.")
@@ -383,15 +369,12 @@ class VoiceChatCog(commands.Cog):
         await self.playAudio(ctx, vc, file_name)
 
     @playRandomCommand.error
-    @ctx_wrapper
-    @cool_down_error
-    @channel_redirect
+    @error_wrapper(use_cooldown=True)
     async def playRandomCommandError(self, ctx, error):
         pass
 
     @commands.command(name="playrename")
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def playRenameCommand(self, ctx, old_file, new_file):
         for char in "/\\*? ":
             if char in new_file:
@@ -411,8 +394,7 @@ class VoiceChatCog(commands.Cog):
 
     @commands.command(name="playsearch")
     @discord.ext.commands.cooldown(*VOICE_SEARCH_COOLDOWN)
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def playSearchCommand(self, ctx, filename):
         files = os.listdir(self.dir)
         filename = filename.lower()
@@ -455,17 +437,14 @@ class VoiceChatCog(commands.Cog):
             await ctx.send("Something went wrong with the interaction.")
 
     @playSearchCommand.error
-    @ctx_wrapper
-    @cool_down_error
-    @channel_redirect
+    @error_wrapper(use_cooldown=True)
     async def playSearchCommandError(self, ctx, error):
         if error == discord.ext.commands.errors.MissingRequiredArgument:
             return await ctx.sendError("You gotta search *something* silly!")
 
     @commands.command(name="playping")
     @discord.ext.commands.cooldown(*VOICE_QUICK_COOLDOWN)
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def playPingCommand(self, ctx):
         if not ctx.author.voice:
             return await ctx.send("You're not in a voice channel.")
@@ -479,15 +458,13 @@ class VoiceChatCog(commands.Cog):
         await self.playAudio(ctx, vc, file_name)
 
     @playPingCommand.error
-    @ctx_wrapper
-    @cool_down_error
+    @error_wrapper(use_cooldown=True)
     async def playPingCommandError(self, ctx, error):
         pass
 
     @commands.command(name="playlist")
     @discord.ext.commands.cooldown(*VOICE_PLAYLIST_COOLDOWN)
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def playListCommand(self, ctx, length: str = None):
         if not ctx.author.voice:
             return await ctx.send("You're not in a voice channel.")
@@ -524,8 +501,7 @@ class VoiceChatCog(commands.Cog):
             await ctx.send("Something went wrong with the interaction.")
 
     @playListCommand.error
-    @ctx_wrapper
-    @cool_down_error
+    @error_wrapper(use_cooldown=True)
     async def playListCommandError(self, ctx, error):
         pass
 

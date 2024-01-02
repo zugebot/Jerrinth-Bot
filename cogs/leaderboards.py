@@ -16,8 +16,7 @@ class LeaderBoardsCog(commands.Cog):
         self.empty_message = "Apparently no one has used the **{}{}** command..."
 
     @commands.command(name="leaderboards", aliases=["ts", "lb"])
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def showLeaderboardsCommand(self, ctx):
         prefix = self.bot.getPrefix(ctx)
 
@@ -34,8 +33,7 @@ class LeaderBoardsCog(commands.Cog):
         await ctx.send(embed)
 
     @commands.command(name="leaderboard")
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def showLeaderboardsCommand(self, ctx, board, amount=None):
         amount = self.getAmount(amount)
         title = "🏆 [Global] {} Total Uses Leaderboard"
@@ -89,50 +87,43 @@ class LeaderBoardsCog(commands.Cog):
 
     @commands.command(name="topservai", aliases=["tsa", "TSA", "Tsa"])
     @discord.ext.commands.cooldown(*LEADERBOARD_COOLDOWN)
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def topServerAICommand(self, ctx, amount=None):
         await self.serverLeaderboardObject(ctx, "ai", "🏆 [Server] AI Total Uses Leaderboard", amount)
 
     @commands.command(name="topservi", aliases=["tsi", "TSI", "Tsi"])
     @discord.ext.commands.cooldown(*LEADERBOARD_COOLDOWN)
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def topServerFindImgCommand(self, ctx, amount=None):
         await self.serverLeaderboardObject(ctx, "imgur", f"🏆 [Server] Findimg Total Uses Leaderboard", amount)
 
     @commands.command(name="topservf", aliases=["tsf", "TSF", "Tsf"])
     @discord.ext.commands.cooldown(*LEADERBOARD_COOLDOWN)
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def topServerFindSeedCommand(self, ctx, amount=None):
         await self.serverLeaderboardObject(ctx, "findseed", f"🏆 [Server] Findseed Total Uses Leaderboard", amount)
 
     @commands.command(name="topservs", aliases=["tss", "TSS", "Tss"])
     @discord.ext.commands.cooldown(*LEADERBOARD_COOLDOWN)
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def topAtSomeoneCommand(self, ctx, amount=None):
         await self.serverLeaderboardObject(ctx, "@someone", f"🏆 [Server] @Someone Total Uses Leaderboard", amount)
 
     @commands.command(name="topservpr", aliases=["tspr", "TSPR", "Tspr"])
     @discord.ext.commands.cooldown(*LEADERBOARD_COOLDOWN)
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def topServerPlayRandomCommand(self, ctx, amount=None):
         await self.serverLeaderboardObject(ctx, "playrandom", f"🏆 [Server] Playrandom Total Uses Leaderboard", amount)
 
     @commands.command(name="topservw", aliases=["tsw", "TSW", "Tsw"])
     @discord.ext.commands.cooldown(*LEADERBOARD_COOLDOWN)
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def topServerPlayRandomCommand(self, ctx, amount=None):
         await self.serverLeaderboardObject(ctx, "whisper", f"🏆 [Server] Whisper Total Uses Leaderboard", amount)
 
     @commands.command(name="topservp", aliases=["tsp", "TSP", "Tsp"])
     @discord.ext.commands.cooldown(*LEADERBOARD_COOLDOWN)
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def topServerPlayRandomCommand(self, ctx, amount=None):
         await self.serverLeaderboardObject(ctx, "play", f"🏆 [Server] Play Total Uses Leaderboard", amount)
 
@@ -156,56 +147,48 @@ class LeaderBoardsCog(commands.Cog):
 
     @commands.command(game="globalservai", aliases=["gsa", "GSA", "Gsa"])
     @discord.ext.commands.cooldown(*LEADERBOARD_COOLDOWN)
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def topGlobalAICommand(self, ctx, amount=None):
         await self.globalLeaderboardObject(ctx, "ai", "🏆 [Global] AI Total Uses Leaderboard", amount)
 
     @commands.command(name="globalservi", aliases=["gsi", "GSI", "Gsi"])
     @discord.ext.commands.cooldown(*LEADERBOARD_COOLDOWN)
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def topGlobalFindImgCommand(self, ctx, amount=None):
         await self.globalLeaderboardObject(ctx, "imgur", f"🏆 [Global] Findimg Total Uses Leaderboard", amount)
 
     @commands.command(name="globalservf", aliases=["gsf", "GSF", "Gsf"])
     @discord.ext.commands.cooldown(*LEADERBOARD_COOLDOWN)
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def topGlobalFindSeedCommand(self, ctx, amount=None):
         await self.globalLeaderboardObject(ctx, "findseed", f"🏆 [Global] Findseed Total Uses Leaderboard", amount)
 
     @commands.command(name="globalservs", aliases=["gss", "GSS", "Gss"])
     @discord.ext.commands.cooldown(*LEADERBOARD_COOLDOWN)
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def topGlobalAtSomeoneCommand(self, ctx, amount=None):
         await self.globalLeaderboardObject(ctx, "@someone", f"🏆 [Global] @Someone Total Uses Leaderboard", amount)
 
     @commands.command(name="globalservpr", aliases=["gspr", "GSPR", "Gspr"])
     @discord.ext.commands.cooldown(*LEADERBOARD_COOLDOWN)
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def topGlobalPlayRandomCommand(self, ctx, amount=None):
         await self.globalLeaderboardObject(ctx, "playrandom", f"🏆 [Global] Playrandom Total Uses Leaderboard", amount)
 
     @commands.command(name="globalservw", aliases=["gsw", "GSW", "Gsw"])
     @discord.ext.commands.cooldown(*LEADERBOARD_COOLDOWN)
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def topGlobalWhisperCommand(self, ctx, amount=None):
         await self.globalLeaderboardObject(ctx, "whisper", f"🏆 [Global] Whisper Total Uses Leaderboard", amount)
 
     @commands.command(name="globalservp", aliases=["gsp", "GSP", "Gsp"])
     @discord.ext.commands.cooldown(*LEADERBOARD_COOLDOWN)
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def topGlobalWhisperCommand(self, ctx, amount=None):
         await self.globalLeaderboardObject(ctx, "play", f"🏆 [Global] Play Total Uses Leaderboard", amount)
 
     @commands.command(name="data", aliases=[])
-    @ctx_wrapper
-    @channel_redirect
+    @ctx_wrapper(redirect=True)
     async def getDataCommand(self, ctx):
         prefix = self.bot.data["servers"][ctx.server]["prefix"]
 

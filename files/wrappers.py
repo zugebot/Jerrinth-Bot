@@ -2,6 +2,8 @@
 
 # native imports
 import functools
+from typing import Dict
+
 from discord.ext import commands
 from discord.ext.commands import Context
 
@@ -9,93 +11,103 @@ from discord.ext.commands import Context
 from files.support import *
 
 
-def is_jerrin(func):
-    discord_id = 611427346099994641  # jerrinth3glitch#6280
+async def send_redirect(self, ctx: ctxObject) -> bool:
+    usable_everywhere = self.bot.getServer(ctx).get("usable_everywhere", False)
+    if self.bot.channelExists(ctx) or usable_everywhere:
+        return False
 
-    @functools.wraps(func)
-    async def wrapper(*args, **kwargs):
-        if args[1].author.id == discord_id:
-            return await func(*args, **kwargs)
-        await args[1].sendError(f"Only <@{discord_id}> can use this.")
-    return wrapper
+    if not self.bot.getServer(ctx).get("channel_redirect", True):
+        return False
 
-def has_administrator():
-    async def predicate(ctx: Context):
-        # Check if the user is Jerrin's main account or has administrator permissions
-        if ctx.message.author.id == 611427346099994641 or ctx.message.author.guild_permissions.administrator:
-            return True
-        else:
-            await ctx.send("You do not have the required permissions to use this command.")
-            return False
-    return commands.check(predicate)
-
-
-def ctx_wrapper(func):
-    @functools.wraps(func)
-    async def wrapper(*args, **kwargs):
-        args = list(args)
-        if not isinstance(args[1], ctxObject):
-            args[1] = ctxObject(args[1], **kwargs)
-        args = tuple(args)
-
-        if str(args[1].user) in args[0].bot.banned_users:
-            return await args[1].sendError("My creator has specifically blacklisted you from using me lol.")
-
-        return await func(*args, **kwargs)
-    return wrapper
+    self.bot.ensureServerExists(ctx)
+    prefix = self.bot.data["servers"][ctx.server]["prefix"]
+    channels = self.bot.getChannelDict(ctx)
+    embed = newEmbed(title="Channel List")
+    embed.description = "You cannot use that command in this channel.\n" \
+                        "Please navigate to one of the below channels."
+    field_title = "Channels" if channels else "Channels Usable (Empty!)"
+    text = ""
+    if channels:
+        text = ", ".join([f"<#{channel}>" for channel in channels]) + "\n"
+    text = f"{text}Admins can add a channel using **{prefix}addchannel\n**"
+    text = f"{text}Admins can also add all channels using **{prefix}omni**"
+    embed.add_field(name=field_title, inline=False, value=text)
+    await ctx.send(embed, reference=True)
+    return True
 
 
-def channel_redirect(func):
-    @functools.wraps(func)
-    async def wrapper(*args, **kwargs):
-        # if it is a valid channel
-        self, ctx = args[0], args[1]
+def ctx_wrapper(var_types: Dict[int, str] = None, user_req: int = 0, redirect: bool = False):
+    """
+    :param var_types: "ping", "num"
+    :param user_req: 0: all, 1: admins, 2: jerrin
+    :param redirect:
+    :return:
+    """
+    if var_types is None:
+        var_types = {}
 
-        usable_everywhere = self.bot.getServer(ctx).get("usable_everywhere", False)
+    jerrin_id = 611427346099994641
 
-        if self.bot.channelExists(ctx) or usable_everywhere:
-            return await func(*args, **kwargs)
+    def decorator(func):
+        @functools.wraps(func)
+        async def wrapper(self, ctx, *args, **kwargs):
 
-        if self.bot.getServer(ctx).get("channel_redirect", True):
+            # Reassign ctx
+            ctx = ctxObject(ctx)
 
-            self.bot.ensureServerExists(ctx)
-            prefix = self.bot.data["servers"][ctx.server]["prefix"]
-            channels = self.bot.getChannelDict(ctx)
+            # prevent banned accounts
+            if str(ctx.user) in self.bot.banned_users:
+                return await ctx.sendError("My creator has specifically blacklisted you from using me lol.")
 
-            embed = newEmbed(title="Channel List")
-            embed.description = "You cannot use that command in this channel.\n" \
-                                "Please navigate to one of the below channels."
+            # check requirements
+            if user_req != 0:
+                can_use = False
+                if user_req > 0:
+                    can_use = bool(ctx.message.author.guild_permissions.administrator)
+                if user_req > 1:
+                    can_use = ctx.author.id == jerrin_id
+                if not can_use:
+                    return
+
+            # shows redirect
+            if redirect:
+                status = await send_redirect(self, ctx)
+                if status:
+                    return
+
+            # Process arguments based on argument_mapping
+            new_args = list(args)
+            for arg_index, arg_type in var_types.items():
+                if arg_type == "num":
+                    new_args[arg_index] = argParseInt(args[arg_index])
+                if arg_type == "ping":
+                    new_args[arg_index] = argParsePing(args[arg_index])
+
+            return await func(self, ctx, *new_args, **kwargs)
+
+        return wrapper
+
+    return decorator
 
 
-            field_title = "Channels" if channels else "Channels Usable (Empty!)"
+def error_wrapper(use_cooldown: bool = False):
+    def decorator(func):
+        @functools.wraps(func)
+        async def wrapper(self, ctx, error, *args, **kwargs):
+            ctx = ctxObject(ctx)
 
-            text = ""
-            if channels:
-                text = ", ".join([f"<#{channel}>" for channel in channels]) + "\n"
-            text = f"{text}Admins can add a channel using **{prefix}addchannel\n**"
-            text = f"{text}Admins can also add all channels using **{prefix}omni**"
-            embed.add_field(name=field_title, inline=False, value=text)
+            # cooldown error
+            if use_cooldown:
+                if isinstance(error, commands.CommandOnCooldown):
+                    if self.bot.getServer(ctx).get("show_time_left", True):
+                        text = f"Try again in **{error.retry_after:.3f}**s."
+                        return await ctx.send(text)
+                    else:
+                        return await ctx.super.message.add_reaction(
+                            convertDecimalToClock(error.retry_after / error.cooldown.per))
 
-            return await ctx.send(embed, reference=True)
+            return await func(self, ctx, error, *args, **kwargs)
 
-        else:
-            return None
+        return wrapper
 
-    return wrapper
-
-
-def cool_down_error(func):
-    @functools.wraps(func)
-    async def wrapper(*args, **kwargs):
-        self, ctx, error = args[0], args[1], args[2]
-
-        # cooldown error
-        if isinstance(error, commands.CommandOnCooldown):
-            if self.bot.getServer(ctx).get("show_time_left", True):
-                text = f"Try again in **{error.retry_after:.3f}**s."
-                return await ctx.send(text)
-            else:
-                return await ctx.super.message.add_reaction(convertDecimalToClock(error.retry_after / error.cooldown.per))
-
-        return await func(*args, **kwargs)
-    return wrapper
+    return decorator

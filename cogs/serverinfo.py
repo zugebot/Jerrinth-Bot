@@ -8,14 +8,12 @@ from files.wrappers import *
 from files.support import *
 
 
-
 class ServerInfoCog(commands.Cog):
     def __init__(self, bot):
         self.bot: JerrinthBot = bot
 
-
     @commands.command(name="settings", aliases=[])
-    @ctx_wrapper
+    @ctx_wrapper()
     async def serverSettingsCommand(self, ctx):
         def emoji(flag: bool) -> str:
             if flag:
@@ -29,8 +27,8 @@ class ServerInfoCog(commands.Cog):
         everywhere = server.get("usable_everywhere", False)
         redirect = server.get("channel_redirect", True)
         timeleft = server.get("show_time_left", True)
-        sayreal = server.get("say_real", True)
-        saytrue = server.get("say_true", True)
+        say_real = server.get("say_real", True)
+        say_true = server.get("say_true", True)
 
         table = [
             [emoji(everywhere), f"Usable Everywhere", f"{prefix}omni"],
@@ -38,8 +36,8 @@ class ServerInfoCog(commands.Cog):
             [emoji(someone), f"@someone Command", f"{prefix}togglesomeone"],
             [emoji(redirect), f"{prefix}ai Censorship", f"{prefix}togglecensor"],
             [emoji(timeleft), f"Show Time Left", f"{prefix}toggletimeleft"],
-            [emoji(saytrue), f"\"True\" Response", f"{prefix}toggletrue"],
-            [emoji(sayreal), f"\"Real\" Response", f"{prefix}togglereal"]
+            [emoji(say_true), f"\"True\" Response", f"{prefix}toggletrue"],
+            [emoji(say_real), f"\"Real\" Response", f"{prefix}togglereal"]
         ]
 
         data = makeTable(table,
