@@ -110,7 +110,7 @@ class CHATAI:
             super().__init__(*args)
 
     @staticmethod
-    def __collect_providers(gpt3_5: bool = False, gpt4: bool = False) -> List:
+    def __collect_providers(both: bool = False, gpt3_5: bool = False, gpt4: bool = False) -> List:
         _providers = []
         for _provider in g4f.Provider.__providers__:
             def testKey(*args):
@@ -120,13 +120,19 @@ class CHATAI:
                 continue
             if not testKey("supports_message_history"):
                 continue
-            if testKey("auth"):
+            if testKey("needs_auth"):
                 continue
-            if gpt3_5 and not testKey("supports_gpt_35_turbo"):
-                continue
-            if gpt4 and not testKey("supports_gpt_4"):
-                continue
+            if not both:
+                if gpt3_5 and not testKey("supports_gpt_35_turbo"):
+                    continue
+                if gpt4 and not testKey("supports_gpt_4"):
+                    continue
+            else:
+                if not testKey("supports_gpt_35_turbo") and not testKey("supports_gpt_4"):
+                    continue
             if _provider.__module__ == "g4f.Provider.GptChatly":
+                continue
+            if _provider.__module__ == "g4f.Provider.Koala":
                 continue
             if _provider.__module__ == "g4f.Provider.Liaobots":
                 continue
@@ -138,9 +144,16 @@ class CHATAI:
         try:
             if _memory.isEmpty():
                 raise CHATAI.InvalidMessageError("AI.InvalidMessageError: Memory object contains no history.")
+
+            _model = None
+            if _provider.supports_gpt_35_turbo:
+                _model = g4f.models.gpt_35_turbo
+            elif _provider.supports_gpt_4:
+                _model = g4f.models.gpt_4_turbo
+
             _response = await g4f.ChatCompletion.create_async(
                 provider=_provider,
-                model=g4f.models.gpt_35_turbo_16k,
+                model=_model,
                 messages=_memory.getMessages(),
                 timeout=15
             )
@@ -150,29 +163,32 @@ class CHATAI:
 
     @staticmethod
     async def getChat(_memory: Memory) -> Tuple[bool, str, str]:
-        _providers = CHATAI.__collect_providers(gpt3_5=True)
-
+        _providers = CHATAI.__collect_providers(both=True)
+        """
         _providers = [
             g4f.Provider.ChatBase,
             g4f.Provider.FakeGpt,
-            g4f.Provider.FreeGpt,
             g4f.Provider.GPTalk,
-            g4f.Provider.GptForLove,
             g4f.Provider.GptGo
         ]
+        """
 
         tasks = [asyncio.create_task(CHATAI.__run_provider(_provider, _memory)) for _provider in _providers]
         _message = ""
-        while True:
+        while tasks:  # Continue as long as there are tasks pending
             done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
             for task in done:
                 _success, _name, _message = task.result()
                 if _success:
+                    # If a task was successful, cancel all other tasks and return the result
                     for t in pending:
                         t.cancel()
                     return True, _name, _message
                 else:
+                    # If the task was not successful, remove it from the list of tasks
                     tasks.remove(task)
+
+            # If no tasks are left and none were successful, return failure
             if not tasks:
                 return False, "", _message
 

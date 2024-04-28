@@ -134,10 +134,12 @@ class ChatCog(commands.Cog):
 
         """SEND DEBUGGING INPUT"""
         logging.info("debug text")
+        debug_message: discord.Message = None
+        debug_text = ""
         if self.bot.getUser(ctx).get("debug", False):
-            message = f"\nTEXT  : {filterGarbage(user_input)[:25]}...```"
-            message = removePings(message, allowed=ctx.user)
-            await ctx.send(message)
+            debug_text = f"\nTEXT: {filterGarbage(user_input)[:25]}...```"
+            debug_text = removePings(debug_text, allowed=ctx.user)
+            debug_message = await ctx.send("```" + debug_text)
 
         """SHOW THE BOT TYPING WHILE DOING THE BELOW"""
         async with ctx.super.channel.typing():
@@ -150,7 +152,7 @@ class ChatCog(commands.Cog):
 
             prompt = self.getPrompt(ctx)
             if prompt == "default":
-                temp_mem.addUser(f"{ctx.user}", user_input)
+                temp_mem.addUser(f"<@{ctx.user}>", user_input)
             else:
                 temp_mem.addUser("", user_input)
 
@@ -159,9 +161,18 @@ class ChatCog(commands.Cog):
             """GET FORMATTED RESPONSE"""
             logging.info("getting chat message!!!!")
             status, name, response = await self.chatai.getChat(temp_mem)
+            response = response.replace("GPT-3.5:", "")
 
             if not status:
-                return await ctx.send(errorEmbed(f"Error: {response}"))
+                if isinstance(response, str):
+                    return await ctx.sendError(f"Error: {response[:2000]}")
+                return await ctx.sendError(f"Error Type: RequestInfo\n{response}")
+
+            if debug_message is not None:
+                try:
+                    await debug_message.edit(content=f"```Engine: {name}{debug_text}")
+                except:
+                    ""
 
             response = f"{filterGarbage(response)}"
 
@@ -194,7 +205,10 @@ class ChatCog(commands.Cog):
 
     @chatCommand.error
     @error_wrapper()
-    async def chatCommandError(self, ctx, error):
+    async def chatCommandError(self, ctx: ctxObject, error):
+        if isinstance(error, commands.CommandOnCooldown):
+            return await ctx.send(reference=True, message=errorEmbed(error.args[0]))
+
         await ctx.sendError("This command has been recently reworked."
                             "\nPlease report this bug and the following error to my DMs:"
                             f"\nError: {error.args}")

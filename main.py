@@ -67,22 +67,26 @@ async def on_message(message: discord.Message) -> None:
         await ctx.message.add_reaction(random.choice(FISH))
 
     # for funny shenanigans (replying "real")
+    found_real = False
     if Jerrinth.getServer(ctx).get("say_real", True):
         if "real" in text:
-            if random.random() < 0.25:
-                if random.random() < 0.1:
-                    await message.channel.send("too real!")
-                else:
-                    await message.channel.send("real")
+            found_real = True
 
     # for funny shenanigans (replying "true")
+    found_true = False
     if Jerrinth.getServer(ctx).get("say_true", True):
         if "true" in text:
-            if random.random() < 0.25:
-                if random.random() < 0.1:
-                    await message.channel.send("so true!")
-                else:
-                    await message.channel.send("true")
+            found_true = True
+
+    if found_real and found_true and random.random() < 0.25:
+        await message.channel.send(["real and true", "so true and too real!"][random.random() < 0.1])
+    elif found_real and random.random() < 0.25:
+        await message.channel.send(["real", "too real!"][random.random() < 0.1])
+    elif found_true and random.random() < 0.25:
+        await message.channel.send(["true", "so true!"][random.random() < 0.1])
+    else:
+        pass
+
 
     # process all commands
     await Jerrinth.process_commands(message)

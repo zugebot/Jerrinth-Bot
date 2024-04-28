@@ -60,6 +60,8 @@ def filterGarbage(string):
         string = string.replace("\n\n\n", "\n\n")
     while "```\n\n" in string:
         string = string.replace("```\n\n", "```\n")
+    while string.startswith(" "):
+        string = string[1:]
 
     return string
 
@@ -595,7 +597,7 @@ class ctxObject:
                 self.user = str(user_obj)
                 self.userInt = user_obj
 
-    async def send(self, message, allowed_mentions=False, reference=None, **kwargs):
+    async def send(self, message, allowed_mentions=False, reference=False, **kwargs):
 
         if type(message) in [int, float]:
             kwargs["content"] = str(message)
@@ -606,13 +608,12 @@ class ctxObject:
 
         if not allowed_mentions:
             kwargs["allowed_mentions"] = discord.AllowedMentions(users=False)
-        if reference is not None:
-            if reference:
-                if allowed_mentions:
-                    return await self.super.reply(mention_author=True, **kwargs)
-                else:
-                    return await self.super.reply(mention_author=False, **kwargs)
-        await self.super.send(**kwargs)
+        if reference:
+            if allowed_mentions:
+                return await self.super.reply(mention_author=True, **kwargs)
+            else:
+                return await self.super.reply(mention_author=False, **kwargs)
+        return await self.super.send(**kwargs)
 
     async def sendError(self, *args, **kwargs):
         allowed_mentions = kwargs.get("allowed_mentions", False)

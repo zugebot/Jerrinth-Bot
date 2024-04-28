@@ -184,12 +184,14 @@ class Server2048RunsCog(commands.Cog):
         return guild.get_member(user_id)
 
     async def addWarning(self, ctx: ctxObject, emoji=None, admin_did_it=False, reaction=False, context=""):
+        """
         self.ensureUser2048Exists(ctx)
         if self.bot.getUser(ctx)["2048"]["warns"] < 0:
             self.bot.getUser(ctx)["2048"]["warns"] = 0
         self.bot.getUser(ctx)["2048"]["warns"] += 1
         self.bot.saveData()
         warnings = self.bot.getUser(ctx)["2048"]["warns"]
+
 
         if warnings in [1, 2, 3]:
             message = "An admin has issued you a **warning**." if admin_did_it else "You have received a **warning** " \
@@ -223,6 +225,7 @@ class Server2048RunsCog(commands.Cog):
             message += f"\n\nCurrent warning count: **{warnings}**."
             message += f"\n\nFor appeals, contact {self.admins[ctx.serverInt]} on Discord."
             await self.sendDMWarning(ctx, message)
+
             member = await self.getMember(ctx.serverInt, ctx.userInt)
             try:
                 await member.ban(reason="Consistently breaking the rules")
@@ -231,6 +234,8 @@ class Server2048RunsCog(commands.Cog):
                     await self.bot.get_channel(ctx.channelInt).send(
                         embed=errorEmbed("I do not have valid permissions to ban..."))
                     return
+        """
+        warnings = 0
 
         # send log message
         channel = self.bot.get_channel(self.LOG_CHANNEL[ctx.serverInt])

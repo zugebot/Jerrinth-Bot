@@ -9,6 +9,7 @@ from files.support import *
 from files.data_manager import DataManager
 from funcs.chatai import CHATAI, Memory
 from funcs.imgur import Imgur
+import openai
 
 
 class JerrinthBot(commands.Bot, DataManager):
@@ -37,6 +38,8 @@ class JerrinthBot(commands.Bot, DataManager):
                              version=data_version
                              )
 
+        self.openai = openai
+
         # fields
         self.debug = debug
         self.maintenance = maintenance
@@ -44,8 +47,13 @@ class JerrinthBot(commands.Bot, DataManager):
 
         # settings
         self.settings_file = self.directory + "data/settings.json"
-        self.settings = read_json(self.settings_file, EMPTY_SETTINGS)
+        self.settings: dict = read_json(self.settings_file, EMPTY_SETTINGS)
         self.logChannelID = self.settings["channel_log_dm"]
+
+        # openai for whisper
+        self.settings.setdefault("openai_token", None)
+        if self.settings["openai_token"] is not None:
+            self.openai.api_key = self.settings["openai_token"]
 
         # banned
         self.banned_users_file = self.directory + "data/banned.json"

@@ -13,7 +13,7 @@ class CogUtils(commands.Cog):
     def __init__(self, bot):
         self.bot: JerrinthBot = bot
 
-    @commands.command(hidden=True)
+    @commands.command(name='load', hidden=True)
     @ctx_wrapper(user_req=2)
     async def loadCommand(self, ctx, module):
         """Loads a module."""
@@ -31,7 +31,7 @@ class CogUtils(commands.Cog):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.sendError("Only admins can use this.")
 
-    @commands.command(hidden=True)
+    @commands.command(name='unload', hidden=True)
     @ctx_wrapper(user_req=2)
     async def unloadCommand(self, ctx, module):
         """Unloads a module."""
