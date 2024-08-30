@@ -5,7 +5,7 @@ from discord.ext import commands, tasks
 
 # custom imports
 from files.jerrinth import JerrinthBot
-from files.support import ctxObject
+from files.support import CtxObject
 from files.wrappers import *
 
 SERVER_ID = 490493858401222656
@@ -54,27 +54,6 @@ class ServerMainCog(commands.Cog):
                            f"\n"
                            f"\n")
 
+
 async def setup(bot):
     await bot.add_cog(ServerMainCog(bot))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

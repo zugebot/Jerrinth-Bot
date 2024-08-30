@@ -9,7 +9,9 @@ from copy import deepcopy
 from files.jerrinth import JerrinthBot
 from files.wrappers import *
 from files.support import *
-from cogs.help import HelpCog
+from cogs.cog_help import makeHelpMenu
+from files.buttonMenu import ButtonMenu
+from files.discord_objects import *
 
 from files.config import *
 
@@ -35,12 +37,10 @@ class ChatCog(commands.Cog):
 
     def ensureUserAIExists(self, ctx):
         self.bot.ensureUserExists(ctx)
-        if self.bot.getUser(ctx).get("ai", None) is None:
-            self.bot.getUser(ctx)["ai"] = EMPTY_AI.copy()
+        if self.bot.getUser(ctx).get("chat", None) is None:
+            self.bot.getUser(ctx)["chat"] = EMPTY_CHAT.copy()
 
-    @commands.command(name="chat", aliases=["<@856411268633329684>", "CHAT", "Chat", "cHAT"])
-    @discord.ext.commands.cooldown(*CHAT_COOLDOWN)
-    @ctx_wrapper(redirect=True)
+    @wrapper_command(name="chat", aliases=["<@856411268633329684>"], cooldown=CHAT_COOLDOWN)
     async def chatCommand(self, ctx):
 
         self.ensureUserAIExists(ctx)
@@ -74,10 +74,10 @@ class ChatCog(commands.Cog):
             return await self.loadChatHistory(ctx)
 
         if len(parse_args) == 0:
-            return await HelpCog.displayHelpCommand(self, ctx.super, page=4)
+            return await makeHelpMenu(self, ctx.super, page=4)
         elif len(parse_args) == 1:
             if parse_args[0] == "help":
-                return await HelpCog.displayHelpCommand(self, ctx.super, page=4)
+                return await makeHelpMenu(self, ctx.super, page=4)
             if parse_args[0] == "clear":
                 return await self.resetChatHistory(ctx)
             if parse_args[0] == "prompt":
@@ -111,7 +111,7 @@ class ChatCog(commands.Cog):
                 return await ctx.sendEmbed(f"Activated ***{parse_args[0].capitalize()} Mode!***")
         else:
             if parse_args[0] == "help":  # TODO
-                return await HelpCog.displayHelpCommand(self, ctx.super, page=4)
+                return await makeHelpMenu(self, ctx.super, page=4)
             if parse_args[0] == "forget":
                 amount = 1 if len(parse_args) == 1 else parse_args[1]
                 return await self.forgetChatHistory(ctx, amount)
@@ -122,19 +122,19 @@ class ChatCog(commands.Cog):
 
         self.bot.saveData()
 
-        prefix = self.bot.getPrefix(ctx)
+        prefix = self.bot.gp(ctx)
         if ctx.super.message.content.lower().strip() == f"{prefix}chat":
             pass
 
         """PARSES INPUT TEXT"""
         logging.info("parses text")
         # appends syntax to end of message, determines if it is a question
-        if self.bot.getUser(ctx)["ai"].get("autocomplete", True):
+        if self.bot.getUser(ctx)["chat"].get("autocomplete", True):
             user_input = addSyntax(user_input)
 
         """SEND DEBUGGING INPUT"""
         logging.info("debug text")
-        debug_message: discord.Message = None
+        debug_message: discord.Message
         debug_text = ""
         if self.bot.getUser(ctx).get("debug", False):
             debug_text = f"\nTEXT: {filterGarbage(user_input)[:25]}...```"
@@ -160,7 +160,7 @@ class ChatCog(commands.Cog):
 
             """GET FORMATTED RESPONSE"""
             logging.info("getting chat message!!!!")
-            status, name, response = await self.chatai.getChat(temp_mem)
+            status, response = await self.chatai.getChat(temp_mem)
             response = response.replace("GPT-3.5:", "")
 
             if not status:
@@ -168,19 +168,19 @@ class ChatCog(commands.Cog):
                     return await ctx.sendError(f"Error: {response[:2000]}")
                 return await ctx.sendError(f"Error Type: RequestInfo\n{response}")
 
-            if debug_message is not None:
-                try:
-                    await debug_message.edit(content=f"```Engine: {name}{debug_text}")
-                except:
-                    ""
+            # if debug_message is not None:
+            #     try:
+            #         await debug_message.edit(content=f"```{debug_text}")
+            #     except:
+            #         ""
 
             response = f"{filterGarbage(response)}"
 
             """UPDATE USERDATA"""
             logging.info("update user data")
-            user = self.bot.getUser(ctx)["ai"]
-            user["total_uses"] += 1
-            user["last_use"] = time.time()
+            user = self.bot.getUser(ctx)["chat"]
+            user["use_total"] += 1
+            user["use_last"] = time.time()
             self.bot.saveData()
 
             """CODE THAT DEALS WITH CENSORING THE INPUT/OUTPUT"""
@@ -204,8 +204,8 @@ class ChatCog(commands.Cog):
                 await ctx.send(segment, reference=(n == 0))
 
     @chatCommand.error
-    @error_wrapper()
-    async def chatCommandError(self, ctx: ctxObject, error):
+    @wrapper_error()
+    async def chatCommandError(self, ctx: CtxObject, error):
         if isinstance(error, commands.CommandOnCooldown):
             return await ctx.send(reference=True, message=errorEmbed(error.args[0]))
 
@@ -245,7 +245,7 @@ class ChatCog(commands.Cog):
     # TODO: needs to be tested
     async def loadChatHistory(self, ctx):
         if not ctx.message.attachments:
-            prefix = self.bot.getPrefix(ctx)
+            prefix = self.bot.gp(ctx)
             return await ctx.sendError("You need to send a file named 'message_history.json' obtained from the "
                                        f"**{prefix}chat history** command.")
 
@@ -262,7 +262,7 @@ class ChatCog(commands.Cog):
             await ctx.sendEmbed("Successfully loaded our previous conversation!")
             break
         else:
-            prefix = self.bot.getPrefix(ctx)
+            prefix = self.bot.gp(ctx)
             await ctx.sendError(f"You didn't send any files called `message_history.json`."
                                 f"\nYou can get this file by using `{prefix}chat history`.")
 

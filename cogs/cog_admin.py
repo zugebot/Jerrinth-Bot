@@ -6,19 +6,20 @@ import datetime
 # custom imports
 from files.jerrinth import JerrinthBot
 from files.config import *
-from files.wrappers import *
+from files.buttonMenu import ButtonMenu
+from files.discord_objects import testAdmin, newEmbed
 from files.wrappers import *
 
 
 class AdminCog(commands.Cog):
     def __init__(self, bot):
         self.bot: JerrinthBot = bot
-        self.message_delete_cap: int = 51
+        self.message_delete_cap: int = 50
 
-    @commands.command(aliases=['purge', 'delete'])
-    @ctx_wrapper(user_req=1)
-    async def clearCommand(self, ctx, amount: int or None):
-        amount = argParseInt(amount) + 1
+    # @unified_wrapper(name="clear", aliases=['purge', 'delete'])
+    # @wrapper_ctx(user_req=1, var_types={0: "int"})
+    @wrapper_command(name="clear", aliases=['purge', 'delete'], user_req=1, var_types={0: "int"}, redirect=False)
+    async def clearCommand(self, ctx, amount: int = None):
         if amount is None:
             return await ctx.sendEmbed(f"You must specify an amount between 1 and {self.message_delete_cap}.")
         elif amount == 0:
@@ -30,18 +31,17 @@ class AdminCog(commands.Cog):
             return await ctx.sendError(f"You cannot delete more than {self.message_delete_cap} messages at a time.")
         else:
             try:
-                await ctx.super.channel.purge(limit=amount)
+                await ctx.super.channel.purge(limit=amount + 1)
             except Exception as e:
-                return await ctx.sendError(f"Something went wrong. Please try again.")
+                return await ctx.sendError(f"Something went wrong. Please try again.\n{e}")
 
     @clearCommand.error
-    @error_wrapper()
+    @wrapper_error()
     async def clearCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.send(f"Only admins can use ,clear!")
 
-    @commands.command(name="server_ids")
-    @ctx_wrapper(user_req=2)
+    @wrapper_command(name="server_ids", user_req=2, redirect=False)
     async def listServerIdsCommand(self, ctx):
         ids = [guild.id for guild in self.bot.guilds]
 
@@ -61,8 +61,7 @@ class AdminCog(commands.Cog):
         message = "\n".join([str(i) for i in ids])
         await ctx.send(message)
 
-    @commands.command(name="servers_list")
-    @ctx_wrapper(user_req=2)
+    @wrapper_command(name="servers_list", user_req=2, redirect=False)
     async def sendServerListCommand(self, ctx):
 
         embeds = []
@@ -88,8 +87,7 @@ class AdminCog(commands.Cog):
         menu = ButtonMenu(embeds, index=0, timeout=180)
         await ctx.super.send(embed=embeds[0], view=menu)
 
-    @commands.command(name="setprefix", aliases=["sp"])
-    @ctx_wrapper(user_req=1)
+    @wrapper_command(name="setprefix", aliases=["sp"], user_req=1, redirect=False)
     async def setPrefixCommand(self, ctx, *args):
 
         if len(args) == 0:
@@ -102,65 +100,60 @@ class AdminCog(commands.Cog):
         await ctx.message.add_reaction("✅")
 
     @setPrefixCommand.error
-    @error_wrapper()
+    @wrapper_error()
     async def setPrefixCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.send("Only admins can change my command prefix!")
 
-    @commands.command(name="togglecensor", aliases=["tc"])
-    @ctx_wrapper(user_req=1)
+    @wrapper_command(name="togglecensor", aliases=["tc"], user_req=1, redirect=False)
     async def toggleCensorshipCommand(self, ctx):
         value = toggleDictBool(self.bot.getServer(ctx), "censorship", True)
         self.bot.saveData()
         await ctx.sendEmbed(f"Set **Censorship** to **{not value}**!")
 
     @toggleCensorshipCommand.error
-    @error_wrapper()
+    @wrapper_error()
     async def toggleCensorshipCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.send("Only admins can toggle my response censorship!")
 
-    @commands.command(name="toggleredirect", aliases=["tr"])
-    @ctx_wrapper(user_req=1)
+    @wrapper_command(name="toggleredirect", aliases=["tr"], user_req=1, redirect=False)
     async def toggleRedirectCommand(self, ctx):
         value = toggleDictBool(self.bot.getServer(ctx), "channel_redirect", True)
         self.bot.saveData()
         await ctx.sendEmbed(f"Set **Channel Redirect** to **{not value}**!")
 
     @toggleRedirectCommand.error
-    @error_wrapper()
+    @wrapper_error()
     async def toggleRedirectCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.send("Only admins can toggle the redirect message appearance!")
 
-    @commands.command(name="togglesomeone", aliases=[])
-    @ctx_wrapper(user_req=1)
+    @wrapper_command(name="togglesomeone", user_req=1, redirect=False)
     async def toggleSomeoneCommand(self, ctx):
-        value = toggleDictBool(self.bot.getServer(ctx), "@someone", False)
+        value = toggleDictBool(self.bot.getServer(ctx), "someone", False)
         self.bot.saveData()
-        await ctx.sendEmbed(f"Set **@someone** to **{not value}**!")
+        await ctx.sendEmbed(f"Set **someone** to **{not value}**!")
 
     @toggleSomeoneCommand.error
-    @error_wrapper()
+    @wrapper_error()
     async def toggleSomeoneCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.send("Only admins can toggle @someone on or off!")
 
-    @commands.command(name="toggletimeleft", aliases=["ttl"])
-    @ctx_wrapper(user_req=1)
+    @wrapper_command(name="toggletimeleft", aliases=["ttl"], user_req=1, redirect=False)
     async def toggleTimeLeftCommand(self, ctx):
         value = toggleDictBool(self.bot.getServer(ctx), "show_time_left", True)
         self.bot.saveData()
         await ctx.sendEmbed(f"**Show Time Left** to **{not value}**!")
 
     @toggleTimeLeftCommand.error
-    @error_wrapper()
+    @wrapper_error()
     async def toggleTimeLeftCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.send("Only admins can toggle the time left display on or off!")
 
-    @commands.command(name="togglereal", aliases=["toggleReal"])
-    @ctx_wrapper(user_req=1)
+    @wrapper_command(name="togglereal", user_req=1, redirect=False)
     async def toggleRealCommand(self, ctx):
         value = toggleDictBool(self.bot.getServer(ctx), "say_real", True)
         self.bot.saveData()
@@ -170,13 +163,12 @@ class AdminCog(commands.Cog):
             await ctx.sendEmbed("I will **no longer say real!**")
 
     @toggleRealCommand.error
-    @error_wrapper()
+    @wrapper_error()
     async def toggleTrueCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.send("Only admins can toggle the time left display on or off!")
 
-    @commands.command(name="toggletrue", aliases=["toggleTrue"])
-    @ctx_wrapper(user_req=1)
+    @wrapper_command(name="toggletrue", user_req=1, redirect=False)
     async def toggleTrueCommand(self, ctx):
         value = toggleDictBool(self.bot.getServer(ctx), "say_true", True)
         self.bot.saveData()
@@ -186,13 +178,12 @@ class AdminCog(commands.Cog):
             await ctx.sendEmbed("I will **no longer say true!**")
 
     @toggleRealCommand.error
-    @error_wrapper()
+    @wrapper_error()
     async def toggleTrueCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.send("Only admins can toggle the time left display on or off!")
 
-    @commands.command(name="togglefindseedeye", aliases=[])
-    @ctx_wrapper(user_req=0)
+    @wrapper_command(name="togglefindseedeye", user_req=0, redirect=False)
     async def toggleFindseedEyesCommand(self, ctx):
         value = toggleDictBool(self.bot.getUser(ctx), "show_findseed_eyes", False)
         self.bot.saveData()
@@ -201,24 +192,22 @@ class AdminCog(commands.Cog):
         else:
             await ctx.sendEmbed("Findseed no longer shows portal emojis!")
 
-    @commands.command(name="getdata")
-    @ctx_wrapper(user_req=1)
-    async def sendDataCommand(self, ctx: ctxObject, user=None):
+    @wrapper_command(name="getdata", user_req=1, redirect=False)
+    async def sendDataCommand(self, ctx: CtxObject, user=None):
         ctx.updateUser(user)
         if ctx.server not in self.bot.data:
             return await ctx.send("Server ID does not exist!")
-        if ctx.user not in self.bot.data[ctx.server]["users"]:
+        if ctx.user not in self.bot.data["users"]:
             return await ctx.send("User ID does not exist!")
         return await ctx.send(str(self.bot.getUser(ctx)))
 
     @sendDataCommand.error
-    @error_wrapper()
+    @wrapper_error()
     async def sendDataCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.send("How did you even find this command?")
 
-    @commands.command(name="debug", aliases=[])
-    @ctx_wrapper(user_req=0)
+    @wrapper_command(name="debug", user_req=0, redirect=False)
     async def toggleDebugCommand(self, ctx, user=None):
         user = argParsePing(user)
         ctx.updateUser(user if await testAdmin(ctx) else None)
@@ -232,8 +221,7 @@ class AdminCog(commands.Cog):
 
         await ctx.sendEmbed(f"Set debug mode for <@{ctx.user}> to **{not value}**!")
 
-    @commands.command(name="blacklist", aliases=["bl"])
-    @ctx_wrapper(user_req=2, var_types={0: "ping"})
+    @wrapper_command(name="blacklist", aliases=["bl"], user_req=2, var_types={0: "ping"}, redirect=False)
     async def blacklistUserCommand(self, ctx, user=None):
         ctx.updateUser(user)
 
@@ -246,14 +234,14 @@ class AdminCog(commands.Cog):
         await ctx.sendEmbed(f"<@{ctx.user}> has been blacklisted.", discord.Color.green())
 
     @blacklistUserCommand.error
-    @error_wrapper()
+    @wrapper_error()
     async def blacklistUserCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.send("How did you even find this command?")
 
-    @commands.command(name="whitelist", aliases=["wl"])
-    @ctx_wrapper(user_req=2, var_types={0: "ping"})
+    @wrapper_command(name="whitelist", aliases=["wl"], user_req=2, var_types={0: "ping"}, redirect=False)
     async def whitelistUserCommand(self, ctx, user=None):
+
         user = argParsePing(user)
         ctx.updateUser(user)
 
@@ -266,39 +254,35 @@ class AdminCog(commands.Cog):
         await ctx.sendEmbed(f"<@{ctx.user}> has been whitelisted.", discord.Color.green())
 
     @whitelistUserCommand.error
-    @error_wrapper()
+    @wrapper_error()
     async def whitelistUserCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.send("How did you even find this command?")
 
-    @commands.command(name="set_data")
-    @ctx_wrapper(user_req=2)
+    @wrapper_command(name="set_data", user_req=2, redirect=False)
     async def setDataCommand(self, ctx, server, user_id, data_type, key, value):
-        if data_type not in self.bot.data["servers"][server]["users"][user_id]:
-            self.bot.data["servers"][server]["users"][user_id][data_type] = EMPTY_ALL[data_type].copy()
-        self.bot.data["servers"][server]["users"][user_id][data_type][key] = int(value)
+        if data_type not in self.bot.data["users"][user_id]:
+            self.bot.data["users"][user_id][data_type] = EMPTY_ALL[data_type].copy()
+        self.bot.data["users"][user_id][data_type][key] = int(value)
         self.bot.saveData()
 
-    @commands.command(name="add_data")
-    @ctx_wrapper(user_req=2)
+    @wrapper_command(name="add_data", user_req=2, redirect=False)
     async def addDataCommand(self, ctx, server, user_id, data_type, key, value):
-        if data_type not in self.bot.data["servers"][server]["users"][user_id]:
-            self.bot.data["servers"][server]["users"][user_id][data_type] = EMPTY_ALL[data_type].copy()
-        self.bot.data["servers"][server]["users"][user_id][data_type][key] += int(value)
+        if data_type not in self.bot.data["users"][user_id]:
+            self.bot.data["users"][user_id][data_type] = EMPTY_ALL[data_type].copy()
+        self.bot.data["users"][user_id][data_type][key] += int(value)
         self.bot.saveData()
 
-    @commands.command(name="minus_data")
-    @ctx_wrapper(user_req=2)
+    @wrapper_command(name="minus_data", user_req=2, redirect=False)
     async def minusDataCommand(self, ctx, server, user_id, data_type, key, value):
-        if data_type not in self.bot.data[server]["users"][user_id]:
-            self.bot.data["servers"][server]["users"][user_id][data_type] = EMPTY_ALL[data_type].copy()
-        self.bot.data["servers"][server]["users"][user_id][data_type][key] -= int(value)
-        if self.bot.data["servers"][server]["users"][user_id][data_type][key] < 0:
-            self.bot.data["servers"][server]["users"][user_id][data_type][key] = 0
+        if data_type not in self.bot.data["users"][user_id]:
+            self.bot.data["users"][user_id][data_type] = EMPTY_ALL[data_type].copy()
+        self.bot.data["users"][user_id][data_type][key] -= int(value)
+        if self.bot.data["users"][user_id][data_type][key] < 0:
+            self.bot.data["users"][user_id][data_type][key] = 0
         self.bot.saveData()
 
-    @commands.command(name="clear_all_chatgpt_content")
-    @ctx_wrapper(user_req=2)
+    @wrapper_command(name="clear_all_chatgpt_content", user_req=2, redirect=False)
     async def clearAllChatGPTContentCommand(self, ctx):
         data = self.bot.data
         for server_id in (SERVERS := data["servers"]):
@@ -319,8 +303,7 @@ class AdminCog(commands.Cog):
                     print(f"deleted server[{server_id}] -> channel[{channel_id}] chatgpt content.")
         self.bot.saveData()
 
-    @commands.command(name="backdoor")
-    @ctx_wrapper(user_req=2)
+    @wrapper_command(name="backdoor", user_req=2, redirect=False)
     async def backdoorCommand(self, ctx, _channel: int, limit: int = 10):
         _channel = argParseInt(_channel)
         limit = argParseInt(limit)

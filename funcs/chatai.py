@@ -1,13 +1,16 @@
 # Jerrin Shirks
-
+import os
 
 import g4f
-from undetected_chromedriver import Chrome, ChromeOptions
 import tiktoken
 
 import asyncio
 from copy import deepcopy
 from typing import List, Tuple, Dict
+
+from g4f.client import AsyncClient
+from g4f.Provider import OpenaiChat
+from g4f.cookies import set_cookies_dir, read_cookie_files
 
 
 class Memory:
@@ -109,6 +112,13 @@ class CHATAI:
         def __init__(self, *args):
             super().__init__(*args)
 
+    def __init__(self, cookie_dir=None):
+        self.client = AsyncClient(provider=OpenaiChat)
+        if cookie_dir is not None:
+            set_cookies_dir(cookies_dir)
+            read_cookie_files(cookies_dir)
+
+    """
     @staticmethod
     def __collect_providers(both: bool = False, gpt3_5: bool = False, gpt4: bool = False) -> List:
         _providers = []
@@ -136,6 +146,8 @@ class CHATAI:
                 continue
             if _provider.__module__ == "g4f.Provider.Liaobots":
                 continue
+            if _provider.__module__ == "g4f.Provider.FreeGpt":
+                continue
             _providers.append(_provider)
         return _providers
 
@@ -160,18 +172,15 @@ class CHATAI:
             return True, _provider.__name__, _response
         except Exception as e:
             return False, _provider.__name__, e.args[0]
-
     @staticmethod
     async def getChat(_memory: Memory) -> Tuple[bool, str, str]:
         _providers = CHATAI.__collect_providers(both=True)
-        """
         _providers = [
             g4f.Provider.ChatBase,
             g4f.Provider.FakeGpt,
             g4f.Provider.GPTalk,
-            g4f.Provider.GptGo
+            g4f.Provider.GptGo,
         ]
-        """
 
         tasks = [asyncio.create_task(CHATAI.__run_provider(_provider, _memory)) for _provider in _providers]
         _message = ""
@@ -192,25 +201,39 @@ class CHATAI:
             if not tasks:
                 return False, "", _message
 
+    """
+
+    async def getChat(self, _memory: Memory) -> Tuple[bool, str]:
+        try:
+            _response = await self.client.chat.completions.create(
+                model="gpt-4o",
+                messages=_memory.getMessages(),
+            )
+        except Exception as e:
+            return False, str(e)
+        return True, _response.choices[0].message.content
+
 
 if __name__ == "__main__":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-    Memory.MAX_MEMORY_SIZE = 4096
-    with open("default", "r") as f:
+    Memory.MAX_MEMORY_SIZE = 16384
+    directory = r"C:\Users\jerrins\PycharmProjects\JerrinBot"
+    with open(rf"{directory}\data\prompts\default.txt", "r") as f:
         Memory.DEFAULT_PROMPT = f.read()
 
     username = "Jerrin"
     memory = Memory()
+    chatAI = CHATAI(cookie_dir=rf"{directory}\data")
 
     while True:
         message = input(': ')
         memory.addUser(username, message)
 
-        status, name, response = asyncio.run(CHATAI.getChat(memory))
+        status, response = asyncio.run(chatAI.getChat(memory))
         if status:
-            print(f"{name}: {response}")
+            print(f"{response}")
             memory.addAssistant(response)
             memory.resizeMemory()
         else:
             print(f"{response}")
-

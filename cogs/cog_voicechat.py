@@ -8,11 +8,14 @@ import aiohttp
 import discord.ext.commands.errors
 import yt_dlp as youtube_dl
 
+from files.buttonMenu import ButtonMenu
 # custom imports
 from files.jerrinth import JerrinthBot
+from files.makeTable import makeTable
 from files.wrappers import *
 from files.support import *
 from files.config import *
+from files.discord_objects import *
 
 
 async def download_file(url, file_name):
@@ -26,34 +29,81 @@ async def download_file(url, file_name):
                     file.write(chunk)
 
 
+def wrapper_in_vc():
+    def decorator(func):
+        @functools.wraps(func)
+        async def wrapper(self, ctx, *args, **kwargs):
+            if not ctx.author.voice:
+                return await ctx.send("You're not in a voice channel.")
+            return await func(self, ctx, *args, **kwargs)
+        return wrapper
+    return decorator
+
+
+def wrapper_stop_playing():
+    def decorator(func):
+        @functools.wraps(func)
+        async def wrapper(self, ctx, *args, **kwargs):
+            vc = await self.joinVC(ctx)
+            if vc.is_playing():
+                vc.stop()
+            return await func(self, ctx, *args, **kwargs)
+        return wrapper
+    return decorator
+
+
+def wrapper_play(in_vc: bool = False, stop_playing: bool = False):
+    def decorator(func):
+        @functools.wraps(func)
+        async def wrapper(self, ctx, *args, **kwargs):
+            if in_vc:
+                if not ctx.author.voice:
+                    return await ctx.send("You're not in a voice channel.")
+            if stop_playing:
+                vc = await self.joinVC(ctx)
+                if vc.is_playing():
+                    vc.stop()
+            return await func(self, ctx, *args, **kwargs)
+        return wrapper
+    return decorator
+
+
 class VoiceChatCog(commands.Cog):
+
     def __init__(self, bot):
         self.bot: JerrinthBot = bot
         self.dir: str = bot.directory + "data/mp3/"
+        self.ffmpeg = {
+            "Linux": bot.directory + "bin/ffmpeg-6.0-i686-static/ffmpeg",
+            "Windows": bot.directory + "bin/ffmpeg.exe",
+        }.get(OS, "")
 
         self.video_length_cap_seconds = 900
         self.downloading_urls = []
 
-        if OS == "Linux":
-            self.ffmpeg: str = bot.directory + "bin/ffmpeg-6.0-i686-static/ffmpeg"
-        elif OS == "Windows":
-            self.ffmpeg: str = bot.directory + "bin/ffmpeg.exe"
-        else:
-            self.ffmpeg: str = ""
-
-    def ensureUserVCExists(self, ctx):
+    def ensureUserExistsPlayRandom(self, ctx):
         self.bot.ensureUserExists(ctx)
         if self.bot.getUser(ctx).get("playrandom", None) is None:
-            self.bot.getUser(ctx)["playrandom"] = EMPTY_PLAYRANDOM.copy()
+            self.bot.getUser(ctx)["playrandom"] = EMPTY_OBJECT.copy()
+
+    def ensureUserExistsPlay(self, ctx):
+        self.bot.ensureUserExists(ctx)
         if self.bot.getUser(ctx).get("play", None) is None:
             self.bot.getUser(ctx)["play"] = EMPTY_OBJECT.copy()
+
+    def getFileList(self):
+        return os.listdir(self.dir)
 
     @staticmethod
     async def joinVC(ctx):
         if ctx.super.voice_client and ctx.super.voice_client.channel == ctx.super.author.voice.channel:
             vc = ctx.super.voice_client
         else:
-            vc = await ctx.super.author.voice.channel.connect()
+            try:
+                vc = await ctx.super.author.voice.channel.connect()
+            except:
+                return await ctx.sendError("I wanted to play a song, but you left the voice channel! Hopefully later "
+                                           "my developer makes this join regardless.")
         return vc
 
     @staticmethod
@@ -73,9 +123,7 @@ class VoiceChatCog(commands.Cog):
                 if before.channel.guild.voice_client is not None:
                     await before.channel.guild.voice_client.disconnect()
 
-    @commands.command(name="join")
-    @discord.ext.commands.cooldown(*VOICE_JOIN_COOLDOWN)
-    @ctx_wrapper(redirect=True)
+    @wrapper_command(name="old_join", cooldown=VOICE_JOIN_CD)
     async def joinCommand(self, ctx):
         try:
             await ctx.super.author.voice.channel.connect()
@@ -83,88 +131,52 @@ class VoiceChatCog(commands.Cog):
             return await ctx.sendError("I am already being used in a different channel!")
 
     @joinCommand.error
-    @error_wrapper(use_cooldown=True)
+    @wrapper_error(use_cooldown=True)
     async def joinCommandError(self, ctx, error):
         pass
 
-    @commands.command(name="leaveall")
-    @ctx_wrapper(user_req=1)
+    @wrapper_command(name="old_leaveall", user_req=1)
     async def leaveAllCommand(self, ctx):
         [await vc.disconnect(True) for vc in self.bot.voice_clients if not vc.is_playing()]
 
     @leaveAllCommand.error
-    @error_wrapper()
+    @wrapper_error()
     async def leaveAllCommandError(self, ctx, error):
         pass
 
-    @commands.command(name="leave")
-    @discord.ext.commands.cooldown(*VOICE_LEAVE_COOLDOWN)
-    @ctx_wrapper(redirect=True)
+    @wrapper_command(name="old_leave", cooldown=VOICE_LEAVE_CD)
     async def leaveCommand(self, ctx):
         await ctx.super.voice_client.disconnect()
 
     @leaveCommand.error
-    @error_wrapper(use_cooldown=True)
+    @wrapper_error(use_cooldown=True)
     async def leaveCommandError(self, ctx, error):
         pass
 
-    @commands.command(name="stop")
-    @discord.ext.commands.cooldown(*VOICE_LEAVE_COOLDOWN)
-    @ctx_wrapper(redirect=True)
+    @wrapper_command(name="old_stop", cooldown=VOICE_LEAVE_CD)
+    @wrapper_play(in_vc=True, stop_playing=True)
     async def stopCommand(self, ctx):
-        vc = await self.joinVC(ctx)
-        if vc.is_playing():
-            vc.stop()
+        pass
 
     @stopCommand.error
-    @error_wrapper(use_cooldown=True)
+    @wrapper_error(use_cooldown=True)
     async def stopCommandError(self, ctx, error):
         pass
 
-    @commands.command(name="meow")
-    @discord.ext.commands.cooldown(*VOICE_QUICK_COOLDOWN)
-    @ctx_wrapper(redirect=True)
-    async def meowCommand(self, ctx):
-        if not ctx.author.voice:
-            return await ctx.send("You're not in a voice channel.")
-
-        vc = await self.joinVC(ctx)
-        if vc.is_playing():
-            vc.stop()
-
-        # Play the MP3 file
-        audio = discord.FFmpegPCMAudio(executable=self.ffmpeg, source=f'{self.dir}meow.mp3')
-        source = discord.PCMVolumeTransformer(audio)
-        source.volume = 0.05
-        vc.play(source)
-        while vc.is_playing():
-            await asyncio.sleep(1)
-
-    @meowCommand.error
-    @error_wrapper(use_cooldown=True)
-    async def meowCommandError(self, ctx, error):
-        pass
-
-    @commands.command(name="volume")
-    @discord.ext.commands.cooldown(*VOICE_LEAVE_COOLDOWN)
-    @ctx_wrapper(redirect=True)
+    @wrapper_command(name="old_volume", cooldown=VOICE_LEAVE_CD)
+    @wrapper_play(in_vc=True)
     async def volumeCommand(self, ctx, new_volume=None):
-        if not ctx.super.author.voice:
-            return await ctx.send("You're not in a voice channel.")
         self.bot.ensureServerExists(ctx)
 
         if new_volume is None:
-            prefix = self.bot.getPrefix(ctx)
-            volume = self.getVolume(ctx)
-            embed = newEmbed(f"Current Volume: **{'%.0f' % volume}%**"
-                             f"\n"
+            embed = newEmbed(f"Current Volume: **{'%.0f' % self.getVolume(ctx)}%**\n"
                              f"\nChange the Volume with"
-                             f"\n**{prefix}volume *NEW_VOLUME**")
+                             f"\n**{self.bot.gp(ctx)}volume *NEW_VOLUME**")
             return await ctx.send(embed)
 
         if new_volume.isdigit():
             new_volume = int(new_volume)
-            if not (0 <= new_volume <= 100):
+            if not (0 <= new_volume <= 200):
                 return await ctx.send("Volume must be between 0 and 100.")
 
             self.bot.getServer(ctx)["vc_volume"] = new_volume
@@ -172,12 +184,12 @@ class VoiceChatCog(commands.Cog):
             await ctx.sendEmbed(f"Volume has been set to **{'%.0f' % new_volume}%**")
 
     @stopCommand.error
-    @error_wrapper(use_cooldown=True)
+    @wrapper_error(use_cooldown=True)
     async def volumeCommandError(self, ctx, error):
         pass
 
+    # moving the bot, it can continue playing if the vc object is updated
     async def playAudio(self, ctx, vc, file_name):
-
         audio = discord.FFmpegPCMAudio(executable=self.ffmpeg, source=file_name)
         source = discord.PCMVolumeTransformer(audio)
         source.volume = self.getVolume(ctx)
@@ -192,8 +204,8 @@ class VoiceChatCog(commands.Cog):
                 print("changed volume", new_volume)
                 source.volume = new_volume
 
-    def getYoutubeVideoOpts(self, url: str = ""):
-        ydl_opts = {
+    def getYoutubeVideoOpts(self):
+        return {
             'ffmpeg_location': self.bot.directory + "bin/",
             'format': 'bestaudio/best',
             'outtmpl': self.dir + '%(title)s',
@@ -206,17 +218,16 @@ class VoiceChatCog(commands.Cog):
                 'preferredquality': '196',
             }],
         }
-        return ydl_opts
 
     def getYoutubeVideoFilenameNoExt(self, url: str = ""):
-        ydl_opts = self.getYoutubeVideoOpts(url)
+        ydl_opts = self.getYoutubeVideoOpts()
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
             info_dict = ydl.extract_info(url, download=False)
             filename = ydl.prepare_filename(info_dict) + ".mp3"
             return filename.split("\\")[-1]
 
     def downloadYoutubeVideo(self, url: str = ""):
-        ydl_opts = self.getYoutubeVideoOpts(url)
+        ydl_opts = self.getYoutubeVideoOpts()
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
             info_dict = ydl.extract_info(url, download=False)
             duration = info_dict.get('duration')
@@ -232,18 +243,17 @@ class VoiceChatCog(commands.Cog):
 
         return True, filename, title
 
-    @commands.command(name="play")
-    @discord.ext.commands.cooldown(*VOICE_PLAY_COOLDOWN)
-    @ctx_wrapper(redirect=True)
+    @wrapper_command(name="old_play", cooldown=VOICE_PLAY_CD)
+    @wrapper_play(in_vc=True)
     async def playCommand(self, ctx, url: str = None):
-        if not ctx.author.voice:
-            return await ctx.send("You're not in a voice channel.")
-        if url is None and not ctx.message.attachments:
-            return await ctx.sendError("You must provide a URL.")
 
-        files = os.listdir(self.dir)
+        if url is None and not ctx.message.attachments:
+            return await ctx.sendError("You must provide a URL or upload a file.")
+
+        files = self.getFileList()
 
         # get from discord file
+        # TODO: SHOULD STREAM THIS
         if ctx.message.attachments:
             _file = renameFileToLength(ctx.message.attachments[0].filename, 56)
             file_name = f"{self.dir}/{_file}"
@@ -255,6 +265,15 @@ class VoiceChatCog(commands.Cog):
 
             # turns a YouTube link into a file if it already exists
             if url.startswith("http") and ("youtu" in url) and ("/" in url):
+                index = url.find("&pp")
+                if index != -1:
+                    url = url[:index]
+                index = url.find("?pp")
+                if index != -1:
+                    url = url[:index]
+                index = url.find("?si")
+                if index != -1:
+                    url = url[:index]
                 video_file_name = self.getYoutubeVideoFilenameNoExt(url)
                 if video_file_name in files:
                     url = video_file_name
@@ -273,10 +292,10 @@ class VoiceChatCog(commands.Cog):
                         self.downloading_urls.remove(url)
                         if arg1 == 0:
                             hours = filename // 3600
-                            min = str(filename // 60).rjust(2, "0")
+                            _min = str(filename // 60).rjust(2, "0")
                             sec = str(int(filename % 60)).rjust(2, "0")
                             return await ctx.sendError(f"Video must be shorter than 30 minutes.\n"
-                                                       f"**Video length:** ``{hours}:{min}:{sec}``")
+                                                       f"**Video length:** ``{hours}:{_min}:{sec}``")
                         file_name = filename
                         disp_file_name = filename.split("\\")[-1]
                         description = f"Played a youtube video!\n\nFilename: ``{disp_file_name}``\n**{title}**\n{url}"
@@ -291,19 +310,11 @@ class VoiceChatCog(commands.Cog):
                     description = f"Played a link!\n``{url}``"
                     await download_file(url, file_name)
 
-            # if it is an index
-            elif url.isdigit():
-                url = int(url)
-                if url > len(files):
-                    return await ctx.sendError(f"Please specify a song index below {len(files)}")
-                file_name = f"{self.dir}/{files[url]}"
-                description = f"Played a file at index {url}.\n``{files[url]}``"
-
             # it is a filename
             elif url in files:
                 _file = renameFileToLength(url, 56)
                 file_name = f'{self.dir}{_file}'
-                description = f"Played a file.\n``{_file}``"
+                description = f"Played a file by name.\n``{_file}``"
             else:
                 return await ctx.sendError("That is not a valid link or previous file.")
 
@@ -319,84 +330,92 @@ class VoiceChatCog(commands.Cog):
         if vc.is_playing():
             vc.stop()
 
-        self.ensureUserVCExists(ctx)
-        user = self.bot.getUser(ctx)["play"]
-        user["total_uses"] += 1
-        user["last_use"] = time.time()
+        self.ensureUserExistsPlay(ctx)
+        updateUsage(self.bot.getUser(ctx)["play"])
         self.bot.saveData()
 
-        prefix = self.bot.getPrefix(ctx)
+        prefix = self.bot.gp(ctx)
         await ctx.sendEmbed(f"**{prefix}play** used by <@{ctx.user}>\n{description}")
 
         await self.playAudio(ctx, vc, file_name)
 
     @playCommand.error
-    @error_wrapper(use_cooldown=True)
+    @wrapper_error(use_cooldown=True)
     async def playCommandError(self, ctx, error):
         pass
 
-    @commands.command(name="playrandom")
-    @discord.ext.commands.cooldown(*VOICE_PLAY_COOLDOWN)
-    @ctx_wrapper(redirect=True)
+    @wrapper_command(name="old_playrandom", cooldown=VOICE_PLAY_CD)
+    @wrapper_play(in_vc=True, stop_playing=True)
     async def playRandomCommand(self, ctx):
-        if not ctx.author.voice:
-            return await ctx.send("You're not in a voice channel.")
-
-        vc = await self.joinVC(ctx)
-        if vc.is_playing():
-            vc.stop()
+        vc = self.joinVC(ctx)
 
         # pick a random mp3
-        files = os.listdir(self.dir)
+        files = self.getFileList()
         if len(files) == 0:
-            prefix = self.bot.getPrefix(ctx)
+            prefix = self.bot.gp(ctx)
             return await ctx.sendError(f"There are no files to play! Consider using {prefix}play to add some.")
 
         file = random.choice(files)
         file_name = f'{self.dir}{file}'
 
-        self.ensureUserVCExists(ctx)
-        user = self.bot.getUser(ctx)["playrandom"]
-        user["total_uses"] += 1
-        user["last_use"] = time.time()
+        self.ensureUserExistsPlayRandom(ctx)
+        updateUsage(self.bot.getUser(ctx)["playrandom"])
         self.bot.saveData()
 
-        prefix = self.bot.getPrefix(ctx)
-        await ctx.sendEmbed(description=f"**{prefix}playrandom** used by <@{ctx.user}>\n"
-                                        f"**```{file}```**")
-        await ctx.message.delete()
+        prefix = self.bot.gp(ctx)
+        try:
+            await ctx.sendEmbed(description="**{}playrandom** used by <{}>\n**```{}```**"
+                                .format(prefix, ctx.user, file))
+            await ctx.message.delete()
+        except discord.errors.Forbidden:
+            pass
 
         await self.playAudio(ctx, vc, file_name)
 
     @playRandomCommand.error
-    @error_wrapper(use_cooldown=True)
+    @wrapper_error(use_cooldown=True)
     async def playRandomCommandError(self, ctx, error):
         pass
 
-    @commands.command(name="playrename")
-    @ctx_wrapper(redirect=True)
+    @wrapper_command(name="old_playrename")
     async def playRenameCommand(self, ctx, old_file, new_file):
         for char in "/\\*? ":
             if char in new_file:
                 return await ctx.sendError(f"You cannot rename the file to include '{char}' characters!")
 
-        files = os.listdir(self.dir)
+        files = self.getFileList()
         if len(files) == 0:
-            prefix = self.bot.getPrefix(ctx)
-            return await ctx.sendError(f"There are no files to play! Consider using {prefix}play to add some.")
+            return await ctx.sendError(f"There aren't files to play! Use **{self.bot.gp(ctx)}play** to add some.")
 
         if old_file not in files:
-            print(old_file)
             return await ctx.sendError(f"That files doesn't seem to exist. Please try again.")
 
         os.rename(self.dir + old_file, self.dir + new_file)
-        await ctx.send(newEmbed(f"Successfully renamed ```{old_file}``` to ```{new_file}```"))
+        await ctx.send(newEmbed("Successfully renamed ```{}``` to ```{}```".format(old_file, new_file)))
 
-    @commands.command(name="playsearch")
-    @discord.ext.commands.cooldown(*VOICE_SEARCH_COOLDOWN)
-    @ctx_wrapper(redirect=True)
-    async def playSearchCommand(self, ctx, filename):
+    @wrapper_command(name="old_playdelete")
+    async def playRenameCommand(self, ctx, file_name):
+        for char in "/\\*? ":
+            if char in file_name:
+                return await ctx.sendError(f"You cannot delete files including the character '{char}'.")
+
         files = os.listdir(self.dir)
+        if len(files) == 0:
+            prefix = self.bot.gp(ctx)
+            return await ctx.sendError(f"There are no files to delete! Consider using {prefix}play to add some.")
+
+        if file_name not in files:
+            return await ctx.sendError(f"That files doesn't seem to exist. Please try again.")
+
+        try:
+            os.remove(f"{self.dir}/{file_name}")
+            await ctx.send(newEmbed(f"Successfully deleted ```{file_name}```"))
+        except:
+            return await ctx.sendError(f"Something went wrong. Idk lol")
+
+    @wrapper_command(name="old_playsearch", cooldown=VOICE_SEARCH_CD)
+    async def playSearchCommand(self, ctx, filename):
+        files = self.getFileList()
         filename = filename.lower()
         files_lower = [i.lower() for i in files]
 
@@ -404,10 +423,6 @@ class VoiceChatCog(commands.Cog):
         for n, file in enumerate(files_lower):
             if filename in file:
                 found_list.append(files[n])
-
-        # exceeds_amount = len(found_list) > 50
-        # if exceeds_amount:
-        #     found_list = found_list[:100]
 
         if len(found_list) == 0:
             return await ctx.sendError(f"No files contain this string: \n``{filename}``")
@@ -423,10 +438,7 @@ class VoiceChatCog(commands.Cog):
             for sect in section:
                 real_section.append([f"{number}.", sect])
                 number += 1
-            table = makeTable(real_section,
-                              code=[0, 1],
-                              direction=1
-                              )
+            table = makeTable(real_section, code=[0, 1], direction=1)
             embed = newEmbed(title=f"Page {index + 1}/{page_len}", description=table)
             embeds.append(embed)
 
@@ -437,43 +449,16 @@ class VoiceChatCog(commands.Cog):
             await ctx.send("Something went wrong with the interaction.")
 
     @playSearchCommand.error
-    @error_wrapper(use_cooldown=True)
+    @wrapper_error(use_cooldown=True)
     async def playSearchCommandError(self, ctx, error):
         if error == discord.ext.commands.errors.MissingRequiredArgument:
             return await ctx.sendError("You gotta search *something* silly!")
 
-    @commands.command(name="playping")
-    @discord.ext.commands.cooldown(*VOICE_QUICK_COOLDOWN)
-    @ctx_wrapper(redirect=True)
-    async def playPingCommand(self, ctx):
-        if not ctx.author.voice:
-            return await ctx.send("You're not in a voice channel.")
-
-        vc = await self.joinVC(ctx)
-        if vc.is_playing():
-            vc.stop()
-
-        # pick a random mp3
-        file_name = f'{self.dir}ping.mp3'
-        await self.playAudio(ctx, vc, file_name)
-
-    @playPingCommand.error
-    @error_wrapper(use_cooldown=True)
-    async def playPingCommandError(self, ctx, error):
-        pass
-
-    @commands.command(name="playlist")
-    @discord.ext.commands.cooldown(*VOICE_PLAYLIST_COOLDOWN)
-    @ctx_wrapper(redirect=True)
+    @wrapper_command(name="old_playlist", cooldown=VOICE_PLAYLIST_COOLDOWN)
     async def playListCommand(self, ctx, length: str = None):
-        if not ctx.author.voice:
-            return await ctx.send("You're not in a voice channel.")
 
-        if length is not None:
-            if length.isdigit():
-                length = int(length)
-        if length is None:
-            length = 10
+        length = int(length) if length is not None and length.isdigit() else 10
+        length = max(10, min(length, 25))
 
         files = os.listdir(self.dir)
 
@@ -487,10 +472,7 @@ class VoiceChatCog(commands.Cog):
             for sect in section:
                 real_section.append([f"{number}.", sect])
                 number += 1
-            table = makeTable(real_section,
-                              code=[0, 1],
-                              direction=1
-                              )
+            table = makeTable(real_section, code=[0, 1], direction=1)
             embed = newEmbed(title=f"Page {index + 1}/{page_len}", description=table)
             embeds.append(embed)
 
@@ -501,7 +483,7 @@ class VoiceChatCog(commands.Cog):
             await ctx.send("Something went wrong with the interaction.")
 
     @playListCommand.error
-    @error_wrapper(use_cooldown=True)
+    @wrapper_error(use_cooldown=True)
     async def playListCommandError(self, ctx, error):
         pass
 

@@ -1,7 +1,10 @@
-openai~=0.27.6
-discord
-pyparsing~=3.0.9
-tiktoken~=0.3.3
+openai==1.42.0
+discord~=2.3.2
+pyparsing==3.1.2
+tiktoken==0.7.0
 pyNaCl
-certifi~=2022.12.7
-aiohttp~=3.8.4
+certifi==2024.7.4
+aiohttp==3.10.5
+yt-dlp
+g4f[all]~=0.3.2.4
+aiofiles~=24.1.0

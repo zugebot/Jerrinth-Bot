@@ -3,5 +3,3 @@
 /venv/
 /.idea/
 /cogs/__pycache__/
-/old_code/
-script.py

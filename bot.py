@@ -1,5 +1,7 @@
 # Jerrin Shirks
 # native imports
+from asyncio import WindowsSelectorEventLoopPolicy
+
 from discord import Interaction
 from discord.ext import tasks
 from discord.ext.commands import CommandNotFound, CommandOnCooldown
@@ -24,7 +26,7 @@ Jerrinth = JerrinthBot(data_version=1,
 
 @Jerrinth.event
 async def on_message(message: discord.Message) -> None:
-    ctx: ctxObject = ctxObject(message)
+    ctx: CtxObject = CtxObject(message)
 
     if ctx.message.author.bot:
         return
@@ -50,15 +52,23 @@ async def on_message(message: discord.Message) -> None:
     if "heypeter" in text:
         return
 
-    """if Jerrinth.direct_message:
+    if Jerrinth.direct_message:
         # send dm-messages to log channel
         if isinstance(message.channel, discord.DMChannel):
             return await handleDMs(Jerrinth, ctx)
         # send log-messages to dms
         if message.channel.id == 1057516665992134777:
-            return await handleSendingDMs(Jerrinth, ctx, message)"""
+            replacement = None
+            if message.content.split(" ")[0].isdigit():
+                replacement, message.content = message.content.split(" ", 1)
+            return await handleSendingDMs(Jerrinth, ctx, message, replacement)
 
-    Jerrinth.ensureServerExists(ctx)
+    try:
+        Jerrinth.ensureServerExists(ctx)
+    except:
+        print("ERROR calling Jerrinth.ensureServerExists(ctx)")
+        print(str(ctx))
+        return
 
     if Jerrinth.debug == (ctx.server != "1048372362900410408"):
         return
@@ -78,14 +88,25 @@ async def on_message(message: discord.Message) -> None:
         if "true" in text:
             found_true = True
 
-    if found_real and found_true and random.random() < 0.25:
-        await message.channel.send(["real and true", "so true and too real!"][random.random() < 0.1])
-    elif found_real and random.random() < 0.25:
-        await message.channel.send(["real", "too real!"][random.random() < 0.1])
-    elif found_true and random.random() < 0.25:
-        await message.channel.send(["true", "so true!"][random.random() < 0.1])
-    else:
-        pass
+    while True:
+        if found_real and found_true and random.random() < 0.25:
+            await message.channel.send(["real and true", "so true and too real!"][random.random() < 0.1])
+            break
+        elif found_real and random.random() < 0.25:
+            chance = random.random()
+            if chance < 5/30:
+                msg = "fake"
+            elif chance < 7/30:
+                msg = "too real!"
+            else:
+                msg = "real"
+            await message.channel.send(msg)
+            break
+        elif found_true and random.random() < 0.25:
+            await message.channel.send(["true", "so true!"][random.random() < 0.1])
+            break
+        else:
+            break
 
 
     # process all commands
@@ -113,4 +134,5 @@ async def on_command_error(ctx, error):
     raise error
 
 
+asyncio.set_event_loop_policy(WindowsSelectorEventLoopPolicy())
 Jerrinth.begin()

@@ -3,13 +3,18 @@ import asyncio
 # native imports
 import os
 from datetime import datetime
+import openai
+import signal
+from pathlib import Path
 
 # custom imports
 from files.support import *
 from files.data_manager import DataManager
+from files.discord_objects import *
+from files.config import *
 from funcs.chatai import CHATAI, Memory
 from funcs.imgur import Imgur
-import openai
+
 
 
 class JerrinthBot(commands.Bot, DataManager):
@@ -34,7 +39,7 @@ class JerrinthBot(commands.Bot, DataManager):
         )
 
         DataManager.__init__(self,
-                             filename=self.directory + "data/data.json",
+                             filename=self.directory + "data/data.json" if not DEBUG else "data/data_debug.json",
                              version=data_version
                              )
 
@@ -44,6 +49,10 @@ class JerrinthBot(commands.Bot, DataManager):
         self.debug = debug
         self.maintenance = maintenance
         self.direct_message = direct_message
+
+        # on exit
+        self.exiting = False
+        signal.signal(signal.SIGINT, self.signal_handler)
 
         # settings
         self.settings_file = self.directory + "data/settings.json"
@@ -75,11 +84,18 @@ class JerrinthBot(commands.Bot, DataManager):
         if self.settings["discord_token"] is None:
             raise Exception("No discord token found in ~/data/settings.json.")
 
+        # ffmpeg
+        self.ffmpeg = {
+            "Linux": self.directory + "bin/ffmpeg-6.0-i686-static/ffmpeg",
+            "Windows": self.directory + "bin/ffmpeg.exe",
+        }.get(OS, "")
+
         # server specific nonsense
         self.hooks_on_raw_reaction_add = {}
         self.hooks_on_raw_reaction_remove = {}
         self.hooks_on_member_join = {}
         self.hooks_on_message = {}
+        self.hooks_on_voice_state_update = {}
 
         # other stuff
         self.imgur = Imgur(self)
@@ -103,8 +119,8 @@ class JerrinthBot(commands.Bot, DataManager):
     def getEmoji(self, name):
         return str(discord.utils.get(self.emojis, name=name))
 
-    def getPrefix(self, ctx):
-        return self.data["servers"][ctx.server]["prefix"]
+    def gp(self, ctx):
+        return self.data["servers"][ctx.server].get("prefix", ",")
 
     def getPrefixes(self, bot, message) -> str:
         if message.content.startswith("@someone"):
@@ -115,7 +131,7 @@ class JerrinthBot(commands.Bot, DataManager):
             return ","
         if message.content.startswith(",reload"):
             return ","
-        return self.data["servers"][str(message.guild.id)]["prefix"]
+        return self.data["servers"][str(message.guild.id)].get("prefix", ",")
 
     async def on_member_join(self, member) -> None:
         if member.guild.id is None:
@@ -144,7 +160,7 @@ class JerrinthBot(commands.Bot, DataManager):
     async def on_guild_join(self, guild: discord.Guild):
         private_log = self.get_channel(self.settings["channel_log_private"])
         self.ensureServerExists(guild.id, guild.name)
-        self.getServer(guild.id).pop("presence", None)
+        self.getServer(guild.id).pop("not_in_server", None)
 
         embed = newEmbed()
         if guild.icon is not None:
@@ -163,7 +179,7 @@ class JerrinthBot(commands.Bot, DataManager):
         await self.wait_until_ready()
         private_log = self.get_channel(self.settings["channel_log_private"])
         self.ensureServerExists(guild.id, guild.name)
-        self.getServer(guild.id)["presence"] = False
+        self.getServer(guild.id)["not_in_server"] = True
 
         embed = newEmbed(color=discord.Color.blue())
 
@@ -175,6 +191,9 @@ class JerrinthBot(commands.Bot, DataManager):
                         )
         await private_log.send(embed=embed)
 
+
+
+
     async def on_ready(self) -> None:
         """
         Loads all cogs, and prints startup message to console.
@@ -182,16 +201,50 @@ class JerrinthBot(commands.Bot, DataManager):
         """
         await self.imgur.loadRandomImages()
 
-        print("\nCogs:")
+        print("\nLoading cogs...")
         for filename in os.listdir(self.directory + "cogs"):
-            if filename.endswith(".py"):
+            if filename.startswith("cog") and filename.endswith(".py"):
                 await self.load_extension(f"cogs.{filename[:-3]}")
                 print(f"loaded cogs.{filename[:-3]}")
 
         print("\nServer Specific:")
-        for filename in os.listdir(self.directory + "cogs/servers"):
-            if filename.endswith(".py"):
-                await self.load_extension(f"cogs.servers.{filename[:-3]}")
-                print(f"loaded cogs.servers.{filename[:-3]}")
+
+        folders = [entry.name for entry in Path(self.directory + "/cogs").iterdir() if entry.is_dir() and entry.name not in ["__pycache__", "unused"]]
+
+        for folder in folders:
+            for filename in os.listdir(f"cogs/{folder}"):
+                if filename.startswith("cog") and filename.endswith(".py"):
+                    extension = f"cogs.{folder}.{filename[:-3]}"
+                    await self.load_extension(extension)
+                    print(f"loading extension \"{extension}\".")
+
+
 
         print("\nStart up successful!")
+
+
+    def signal_handler(self, signum, frame):
+        print("SIGINT: Preparing to shutdown...")
+
+        # cog stuff
+        self.exiting = True
+
+        # dataManager stuff
+        if self.is_saving:
+            print_red("SIGINT: Waiting for Data to be saved...")
+        self.shutdown_requested = True
+
+        # shut myself off
+        loop = asyncio.get_event_loop()
+        loop.create_task(self.async_close())
+
+    async def async_close(self):
+        await self.close()
+
+    async def close(self):
+        # vc: discord.VoiceProtocol
+        # for vc in self.voice_clients:
+        #     await vc.disconnect(force=True)
+        #     print_red(f"SIGINT: voice call: disconnected from {vc.channel.id} ({vc.channel})")
+        await super().close()
+

@@ -8,7 +8,9 @@ from files.jerrinth import JerrinthBot
 from files.wrappers import *
 from files.support import *
 from files.config import *
+from files.discord_objects import *
 from funcs.nsp import NumericStringParser
+
 
 
 def insert_zero(string):
@@ -48,9 +50,7 @@ class MathCog(commands.Cog):
         self.bot: JerrinthBot = bot
         self.nsp = NumericStringParser()
 
-    @commands.command(name="solve", aliases=["s"])
-    @discord.ext.commands.cooldown(*SOLVE_COOLDOWN)
-    @ctx_wrapper(redirect=True)
+    @wrapper_command(name="solve", aliases=["s"], cooldown=SOLVE_COOLDOWN)
     async def solveEquationCommand(self, ctx, *args):
         expression = " ".join(args)
 
@@ -106,7 +106,7 @@ class MathCog(commands.Cog):
                 await ctx.send(embed)
 
     @solveEquationCommand.error
-    @error_wrapper()
+    @wrapper_error()
     async def solveEquationCommandError(self, ctx, error):
         pass
 

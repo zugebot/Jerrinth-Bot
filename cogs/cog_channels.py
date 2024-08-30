@@ -1,8 +1,8 @@
 # Jerrin Shirks
-
 # native imports
 
 # custom imports
+from files.discord_objects import *
 from files.wrappers import *
 from files.support import *
 from files.jerrinth import JerrinthBot
@@ -13,7 +13,7 @@ class ChannelsCog(commands.Cog):
         self.bot: JerrinthBot = bot
 
     """
-    @commands.command(name="channelengine", aliases=["ce"])
+    @unified_wrapper(name="channelengine", aliases=["ce"])
     @ctx_wrapper(user_req=1)
     async def setChannelEngineCommand(self, ctx, engineArg: str = ""):
 
@@ -50,8 +50,7 @@ class ChannelsCog(commands.Cog):
             await ctx.send("Only admins can set a channel engine!")
     """
 
-    @commands.command(name="addchannel", aliases=["ac"])
-    @ctx_wrapper(user_req=1)
+    @wrapper_command(name="addchannel", aliases=["ac"], user_req=1, redirect=False)
     async def addChannelCommand(self, ctx, channel=None):
         channel = argParsePing(channel, excluded=["all"])
         ctx.updateChannel(channel)
@@ -64,13 +63,12 @@ class ChannelsCog(commands.Cog):
         await ctx.send(desc)
 
     @addChannelCommand.error
-    @error_wrapper()
+    @wrapper_error()
     async def addChannelCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.send("Only admins can add channels to my scope!")
 
-    @commands.command(name="delchannel", aliases=["dc"])
-    @ctx_wrapper(user_req=1)
+    @wrapper_command(name="delchannel", aliases=["dc"], user_req=1, redirect=False)
     async def deleteChannelCommand(self, ctx, channel=None):
         channel = argParsePing(channel, excluded=["all"])
         ctx.updateChannel(channel)
@@ -90,17 +88,16 @@ class ChannelsCog(commands.Cog):
         await ctx.send(desc)
 
     @deleteChannelCommand.error
-    @error_wrapper()
+    @wrapper_error()
     async def deleteChannelCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.send("Only admins can remove channels to my scope!")
 
-    @commands.command(name="channels", aliases=["c"])
-    @ctx_wrapper()
+    @wrapper_command(name="channels", aliases=["c"], redirect=False)
     async def channelsCommand(self, ctx, redirect=False):
         self.bot.ensureServerExists(ctx)
         server = self.bot.getServer(ctx)
-        prefix = self.bot.getPrefix(ctx)
+        prefix = self.bot.gp(ctx)
         channels = self.bot.getChannelDict(ctx)
         embed = newEmbed(title="Channel List")
 
@@ -126,11 +123,10 @@ class ChannelsCog(commands.Cog):
 
         await ctx.send(embed, reference=True)
 
-    @commands.command(name="omni", aliases=["OMNI", "Omni"])
-    @ctx_wrapper(user_req=1)
+    @wrapper_command(name="omni", user_req=1, redirect=False)
     async def addAllChannels(self, ctx):
         server = self.bot.getServer(ctx)
-        prefix = self.bot.getPrefix(ctx)
+        prefix = self.bot.gp(ctx)
         toggleDictBool(server, "usable_everywhere", False)
         if server.get("usable_everywhere"):
             description = "***You can now use me in all text channels!***"

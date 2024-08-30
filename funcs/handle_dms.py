@@ -4,7 +4,7 @@
 
 # custom imports
 from files.support import *
-
+from files.discord_objects import *
 
 
 async def handleDMs(Jerrinth, ctx):
@@ -23,8 +23,7 @@ async def handleDMs(Jerrinth, ctx):
     return
 
 
-
-async def handleSendingDMs(Jerrinth, ctx, message):
+async def handleSendingDMs(Jerrinth, ctx, message, replacement=None):
     logChannel = Jerrinth.getLogChannel()
     if not message.content:
         return
@@ -40,10 +39,14 @@ async def handleSendingDMs(Jerrinth, ctx, message):
             try:
 
                 # send to user
-                user = Jerrinth.get_user(int(re.findall("[0-9]{15,20}", original.embeds[0].description)[0]))
-                text = f"**From** <@{ctx.message.author.id}>\n\n{message.content}"
-                embed = newEmbed(color=ctx.message.author.accent_color, description=text)
-                await user.send(embed=embed)
+                if replacement is None:
+                    user = Jerrinth.get_user(int(re.findall("[0-9]{15,20}", original.embeds[0].description)[0]))
+                else:
+                    user = Jerrinth.get_user(int(replacement))
+                text = message.content
+                # text = f"**From** <@{ctx.message.author.id}>\n\n{message.content}"
+                # embed = newEmbed(color=ctx.message.author.accent_color, description=text)
+                await user.send(message.content)
 
                 # make log-channel better
                 text = f"**To** <@{user.id}>\n{message.content}"

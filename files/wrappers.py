@@ -1,17 +1,19 @@
 # Jerrin Shirks
 
 # native imports
+import asyncio
 import functools
 from typing import Dict
-
+from collections import OrderedDict
 from discord.ext import commands
-from discord.ext.commands import Context
+from discord.ext.commands import Context, BucketType
 
+from files.discord_objects import newEmbed, is_jerrin
 # custom imports
 from files.support import *
 
 
-async def send_redirect(self, ctx: ctxObject) -> bool:
+async def send_redirect(self, ctx: CtxObject) -> bool:
     usable_everywhere = self.bot.getServer(ctx).get("usable_everywhere", False)
     if self.bot.channelExists(ctx) or usable_everywhere:
         return False
@@ -36,65 +38,125 @@ async def send_redirect(self, ctx: ctxObject) -> bool:
     return True
 
 
-def ctx_wrapper(var_types: Dict[int, str] = None, user_req: int = 0, redirect: bool = False):
-    """
-    :param var_types: "ping", "num"
-    :param user_req: 0: all, 1: admins, 2: jerrin
-    :param redirect:
-    :return:
-    """
-    if var_types is None:
-        var_types = {}
+ALL_ALIASES = None
 
-    jerrin_id = 611427346099994641
+
+def updateNameAndAlias(kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    global ALL_ALIASES
+
+    if ALL_ALIASES is None:
+        ALL_ALIASES = OrderedDict()
+
+    # Step 1: ensure valid arguments
+    _error = "@unified_wrapper: "
+    # ensure valid name format
+    _new_aliases = set()
+    if "name" not in kwargs:
+        raise ValueError(f"{_error}\"name\" kwarg not passed.")
+    _name: str = kwargs["name"]
+    if _name.lower() != _name:
+        raise ValueError(f"{_error}\"name\" kwarg should be all lowercase ({_name}).")
+    if _name in ALL_ALIASES:
+        print(f"{_error}command name \"{_name}\" is already used by command "
+              f"\"{ALL_ALIASES[_name]}\". All names must be unique.")
+    else:
+        ALL_ALIASES[_name] = _name
+    _new_aliases.add(capitalize(_name))
+    _new_aliases.add(_name.swapcase())
+    _new_aliases.add(capitalize(_name).swapcase())
+
+    # create kwargs["aliases"] if it does not exist
+    if "aliases" not in kwargs:
+        kwargs["aliases"] = []
+    if not isinstance(kwargs["aliases"], list):
+        raise ValueError(f"{_error}\"aliases\" kwarg be of type list.")
+    # add aliases
+    for _iter_alias in kwargs["aliases"]:
+        if _iter_alias.lower() != _iter_alias:
+            raise ValueError(f"{_error}\"aliases\" argument \"{_iter_alias}\" should be all lowercase.")
+        elif _iter_alias in ALL_ALIASES:
+            raise ValueError(f"{_error}alias \"{_iter_alias}\" is already used "
+                             f"by the command \"{ALL_ALIASES[_iter_alias]}\". All names must be unique.")
+        else:
+            ALL_ALIASES[_iter_alias] = _name
+
+        _new_aliases.add(capitalize(_iter_alias))
+        _new_aliases.add(_iter_alias.swapcase())
+        _new_aliases.add(capitalize(_iter_alias).swapcase())
+    # update aliases kwarg
+    kwargs["aliases"] = list(_new_aliases)
+
+    return kwargs
+
+
+def wrapper_command(*args, cooldown=None, var_types: Dict[int, str] = None,
+                    user_req: int = 0, redirect: bool = False, **kwargs):
+
+    var_types = var_types or {}
 
     def decorator(func):
+        nonlocal kwargs
+        if not asyncio.iscoroutinefunction(func):
+            raise TypeError("Callback must be a coroutine.")
+
+        # Step 1: update name / aliases
+        kwargs = updateNameAndAlias(kwargs)
+
+        # Step 2: apply command decorator
+        command = commands.command(*args, **kwargs)(func)
+
+        # Step 3: apply cooldown if specified
+        if cooldown is not None:
+            _rate, _per, _type = cooldown
+            command = commands.cooldown(_rate, _per, _type)(command)
+
+        # Step 4: create the wrapper function to handle context and argument parsing
         @functools.wraps(func)
-        async def wrapper(self, ctx, *args, **kwargs):
+        async def wrapper(self, context, *inner_args, **inner_kwargs):
+            # Upgrade context object
+            context = CtxObject(context)
 
-            # Reassign ctx
-            ctx = ctxObject(ctx)
+            # Disable for banned users
+            if str(context.user) in self.bot.banned_users:
+                return await context.sendError("My creator has specifically blacklisted you from using me lol.")
 
-            # prevent banned accounts
-            if str(ctx.user) in self.bot.banned_users:
-                return await ctx.sendError("My creator has specifically blacklisted you from using me lol.")
+            # User permissions
+            if user_req == 2 and not is_jerrin(context.author.id):
+                return
+            elif user_req == 1 and not context.message.author.guild_permissions.administrator:
+                return
 
-            # check requirements
-            if user_req != 0:
-                can_use = False
-                if user_req > 0:
-                    can_use = bool(ctx.message.author.guild_permissions.administrator)
-                if user_req > 1:
-                    can_use = ctx.author.id == jerrin_id
-                if not can_use:
-                    return
+            # Force redirect
+            if redirect and await send_redirect(self, context):
+                return
 
-            # shows redirect
-            if redirect:
-                status = await send_redirect(self, ctx)
-                if status:
-                    return
+            # Parse arguments
+            arg_type_map = {
+                "num": argParseInt,
+                "number": argParseInt,
+                "int": argParseInt,
+                "ping": argParsePing
+            }
+            new_args = [
+                arg_type_map.get(var_types.get(i), lambda x: x)(arg)
+                for i, arg in enumerate(inner_args)
+            ]
 
-            # Process arguments based on argument_mapping
-            new_args = list(args)
-            for arg_index, arg_type in var_types.items():
-                if arg_type == "num":
-                    new_args[arg_index] = argParseInt(args[arg_index])
-                if arg_type == "ping":
-                    new_args[arg_index] = argParsePing(args[arg_index])
+            return await func(self, context, *new_args, **inner_kwargs)
 
-            return await func(self, ctx, *new_args, **kwargs)
+        # Replace the original function with the wrapped one
+        command.callback = wrapper
 
-        return wrapper
+        return command
 
     return decorator
 
 
-def error_wrapper(use_cooldown: bool = False):
+def wrapper_error(use_cooldown: bool = False):
     def decorator(func):
         @functools.wraps(func)
         async def wrapper(self, ctx, error, *args, **kwargs):
-            ctx = ctxObject(ctx)
+            ctx = CtxObject(ctx)
 
             # cooldown error
             if use_cooldown:
@@ -111,3 +173,6 @@ def error_wrapper(use_cooldown: bool = False):
         return wrapper
 
     return decorator
+
+
+

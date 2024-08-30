@@ -5,8 +5,11 @@ from discord.ext import commands, tasks
 
 # custom imports
 from files.jerrinth import JerrinthBot
-from files.support import ctxObject
+from files.buttonMenu import ButtonMenu
+from files.support import CtxObject
 from files.wrappers import *
+from files.discord_objects import *
+from files.makeTable import makeTable
 
 
 class Server2048RunsCog(commands.Cog):
@@ -29,10 +32,8 @@ class Server2048RunsCog(commands.Cog):
             self.bot.hooks_on_raw_reaction_add[server] = self.on_raw_reaction_add
             self.bot.hooks_on_message[server] = self.on_message
 
-    @commands.command(name='warnings', aliases=['Warnings', 'WARNINGS'])
-    @discord.ext.commands.cooldown(1, 15, commands.BucketType.guild)
-    @ctx_wrapper()
-    async def warningsCommand(self, ctx: ctxObject):
+    @wrapper_command(name='warnings', cooldown=(1, 15, commands.BucketType.guild))
+    async def warningsCommand(self, ctx: CtxObject):
         if ctx.serverInt not in self.SERVER_IDS:
             return
 
@@ -76,9 +77,8 @@ class Server2048RunsCog(commands.Cog):
             embeds[0].set_author(name="Warned Users")
             await ctx.send(embeds[0])
 
-    @commands.command(name='warn', aliases=['Warn', 'WARN'])
-    @ctx_wrapper(user_req=1)
-    async def _2048warnCommand(self, ctx: ctxObject, user=None):
+    @wrapper_command(name='warn', user_req=1)
+    async def _2048warnCommand(self, ctx: CtxObject, user=None):
 
         original_user = ctx.userInt
 
@@ -101,14 +101,13 @@ class Server2048RunsCog(commands.Cog):
         await ctx.message.add_reaction("✅")
 
     @_2048warnCommand.error
-    @error_wrapper()
+    @wrapper_error()
     async def _2048warnCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.message.add_reaction("❌")
 
-    @commands.command(name='setwarn', aliases=['setwarning', 'Setwarn', 'Setwarning'])
-    @ctx_wrapper(user_req=1)
-    async def _2048setwarnCommand(self, ctx: ctxObject, user=None, number: int | None = None):
+    @wrapper_command(name='setwarn', aliases=['setwarning'], user_req=1)
+    async def _2048setWarnCommand(self, ctx: CtxObject, user=None, number: int | None = None):
         if ctx.serverInt not in self.SERVER_IDS:
             return
 
@@ -150,15 +149,15 @@ class Server2048RunsCog(commands.Cog):
         embed = newEmbed(content)
         await channel.send(embed=embed)
 
-    @_2048setwarnCommand.error
-    @error_wrapper()
-    async def _2048setwarnCommandError(self, ctx, error):
+    @_2048setWarnCommand.error
+    @wrapper_error()
+    async def _2048setWarnCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.message.add_reaction("❌")
 
-    def ensureUser2048Exists(self, ctx: ctxObject):
+    def ensureUser2048Exists(self, ctx: CtxObject):
         if self.bot.getUser(ctx) is None:
-            self.bot.data["servers"][ctx.server]["users"][ctx.user] = EMPTY_USER.copy()
+            self.bot.data["users"][ctx.user] = EMPTY_USER.copy()
 
         if isinstance(ctx.message, RawReactionActionEvent):
             self.bot.getUser(ctx)["name"] = self.bot.get_user(ctx.userInt).name
@@ -170,7 +169,7 @@ class Server2048RunsCog(commands.Cog):
         if self.bot.getUser(ctx).get("2048", None) is None:
             self.bot.getUser(ctx)["2048"] = self.EMPTY_2048.copy()
 
-    async def sendDMWarning(self, ctx: ctxObject, warning: str):
+    async def sendDMWarning(self, ctx: CtxObject, warning: str):
         user = self.bot.get_user(ctx.userInt)
         embed = newEmbed(description=warning)
         server = self.bot.get_guild(ctx.serverInt)
@@ -183,7 +182,7 @@ class Server2048RunsCog(commands.Cog):
             return None
         return guild.get_member(user_id)
 
-    async def addWarning(self, ctx: ctxObject, emoji=None, admin_did_it=False, reaction=False, context=""):
+    async def addWarning(self, ctx: CtxObject, emoji=None, admin_did_it=False, reaction=False, context=""):
         """
         self.ensureUser2048Exists(ctx)
         if self.bot.getUser(ctx)["2048"]["warns"] < 0:
@@ -253,7 +252,7 @@ class Server2048RunsCog(commands.Cog):
         embed = newEmbed(content)
         await channel.send(embed=embed)
 
-    async def on_message(self, ctx: ctxObject) -> None:
+    async def on_message(self, ctx: CtxObject) -> None:
         text = ctx.message.content.lower().replace(" ", "")
 
         for emoji in self.EMOJIS:
@@ -270,7 +269,7 @@ class Server2048RunsCog(commands.Cog):
                 await message.remove_reaction(str(payload.emoji), user)
             except:
                 ""
-            ctx: ctxObject = ctxObject(payload)
+            ctx: CtxObject = CtxObject(payload)
             await self.addWarning(ctx, str(payload.emoji), reaction=True)
 
 

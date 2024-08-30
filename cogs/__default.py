@@ -13,13 +13,12 @@ class DefaultCog(commands.Cog):
     def __init__(self, bot):
         self.bot: JerrinthBot = bot
 
-    @commands.command(name="test_")
-    @ctx_wrapper(user_req=0, var_types={0: "num", 1: "ping"})
+    @wrapper_command(name="test_", user_req=0, var_types={0: "num", 1: "ping"}, redirect=False)
     async def testCommand(self, ctx, var, user):
         await ctx.send(f"var: {var}, user: {user}")
 
     @testCommand.error
-    @ctx_wrapper()
+    @wrapper_error()
     async def testCommandError(self, ctx, error):
         pass
 

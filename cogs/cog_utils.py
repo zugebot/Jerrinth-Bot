@@ -13,8 +13,7 @@ class CogUtils(commands.Cog):
     def __init__(self, bot):
         self.bot: JerrinthBot = bot
 
-    @commands.command(name='load', hidden=True)
-    @ctx_wrapper(user_req=2)
+    @wrapper_command(name='load', hidden=True, user_req=2, redirect=False)
     async def loadCommand(self, ctx, module):
         """Loads a module."""
         try:
@@ -26,13 +25,12 @@ class CogUtils(commands.Cog):
                 await ctx.send('{}: {}'.format(type(e).__name__, e))
 
     @loadCommand.error
-    @error_wrapper()
+    @wrapper_error()
     async def loadCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.sendError("Only admins can use this.")
 
-    @commands.command(name='unload', hidden=True)
-    @ctx_wrapper(user_req=2)
+    @wrapper_command(name='unload', hidden=True, user_req=2, redirect=False)
     async def unloadCommand(self, ctx, module):
         """Unloads a module."""
         try:
@@ -44,13 +42,12 @@ class CogUtils(commands.Cog):
                 await ctx.send('{}: {}'.format(type(e).__name__, e))
 
     @unloadCommand.error
-    @error_wrapper()
+    @wrapper_error()
     async def unloadCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.sendError("Only admins can use this.")
 
-    @commands.command(name='reload', hidden=True)
-    @ctx_wrapper(user_req=2)
+    @wrapper_command(name='reload', hidden=True, user_req=2, redirect=False)
     async def reloadCommand(self, ctx, module):
         """Reloads a module."""
         try:
@@ -62,7 +59,7 @@ class CogUtils(commands.Cog):
                 await ctx.send('{}: {}'.format(type(e).__name__, e))
 
     @reloadCommand.error
-    @error_wrapper()
+    @wrapper_error()
     async def reloadCommandError(self, ctx, error):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.sendError("Only admins can use this.")

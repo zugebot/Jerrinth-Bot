@@ -4,16 +4,17 @@
 
 # custom imports
 from files.jerrinth import JerrinthBot
+from files.makeTable import makeTable
 from files.wrappers import *
 from files.support import *
+from files.discord_objects import *
 
 
 class UserInfoCog(commands.Cog):
     def __init__(self, bot):
         self.bot: JerrinthBot = bot
 
-    @commands.command(name="eyecount", aliases=["ec"])
-    @ctx_wrapper(var_types={0: "ping"}, redirect=True)
+    @wrapper_command(name="eyecount", aliases=["ec"], var_types={0: "ping"})
     async def showEyeCountCommand(self, ctx, user=None):
         ctx.updateUser(user)
 
@@ -24,7 +25,7 @@ class UserInfoCog(commands.Cog):
             else:
                 return await ctx.send("This user has not interacted with me yet!")
 
-        prefix = self.bot.getPrefix(ctx)
+        prefix = self.bot.gp(ctx)
         data_user = self.bot.getUser(ctx)
 
         if data_user is None:
@@ -51,7 +52,7 @@ class UserInfoCog(commands.Cog):
         table1.reverse()
 
         table1 = makeTable(data=table1,
-                           boldCol=[],
+                           bold_col=[],
                            code=[0],
                            sep={
                                0: "",
@@ -65,12 +66,12 @@ class UserInfoCog(commands.Cog):
         eye_sum = sum([eye * n for n, eye in enumerate(eyes)])
 
         table2 = [
-            [data_user['findseed']['total_uses'], "Total Uses"],
+            [data_user['findseed']['use_total'], "Total Uses"],
             [eye_sum, "Total Eyes"]
         ]
 
         table2 = makeTable(data=table2,
-                           boldCol=[],
+                           bold_col=[],
                            code=[0],
                            sep={
                                0: " - ",
@@ -81,8 +82,7 @@ class UserInfoCog(commands.Cog):
         embed.add_field(name="Other Stats", inline=True, value=table2)
         await ctx.send(embed)
 
-    @commands.command(name="profile", aliases=["userinfo"])
-    @ctx_wrapper(redirect=True)
+    @wrapper_command(name="profile", aliases=["userinfo"])
     async def profileCommand(self, ctx, user=None):
         ctx.updateUser(argParsePing(user))
 
@@ -98,53 +98,77 @@ class UserInfoCog(commands.Cog):
         embed.set_thumbnail(url=user.avatar)
         embed.set_author(name=user.name)
         embed.add_field(name="User", inline=False, value=f"<@{user.id}>")
-        prefix = self.bot.getPrefix(ctx)
+        prefix = self.bot.gp(ctx)
 
         user = self.bot.getUser(ctx)
 
         if user is None:
             return await ctx.send("This user has not interacted with me yet!")
 
-        # eye section
+        table_uniques = []
+
+        # findblock
+        if "findblock" in user:
+            if self.bot.getUser(ctx)["findblock"]["end_portal_count"] != 0:
+                _emoji_portal = self.bot.getEmoji("end_portal")
+                portal_count = self.bot.getUser(ctx)["findblock"]["end_portal_count"]
+                table_uniques.append(["Total", f"{portal_count}x {_emoji_portal}"])
+
+        # findseed section
+        _emoji_eye = self.bot.getEmoji('mc_ender_eye')
         if "findseed" in user:
             eyes = user["findseed"]["eye_count"].copy()
             while eyes[-1] == 0:
                 eyes.pop()
+            table_uniques.append(["Total", f"{sum([eye * n for n, eye in enumerate(eyes)])}x {_emoji_eye}"])
 
-            eye_sum = sum([eye * n for n, eye in enumerate(eyes)])
-            best_eye = len(eyes) - 1
-            embed.add_field(name="Eyes",
+        if table_uniques:
+            embed.add_field(name="Uniques",
                             inline=False,
                             value=makeTable(
-                                data=[
-                                    ["Total", eye_sum, f"x{self.bot.getEmoji('mc_ender_eye')}"],
-                                    ["Highest Rolled", best_eye, f"x{self.bot.getEmoji('mc_ender_eye')}"]
-                                ],
-                                boldCol=1,
-                                sep={0: ": ",
-                                     1: ""}))
+                                data=table_uniques,
+                                bold_col=1,
+                                sep={0: ": "}))
+
+        table_stats = []
+
+        if "findseed" in user:
+            eyes = user["findseed"]["eye_count"].copy()
+            while eyes[-1] == 0:
+                eyes.pop()
+            table_stats.append([f"Highest{_emoji_eye}", len(eyes) - 1])
+
+        if table_stats:
+            embed.add_field(name="Stats",
+                            inline=False,
+                            value=makeTable(
+                                data=table_stats,
+                                bold_col=1,
+                                sep={0: ": "}))
 
         # command section
         keys = [
             ("ai", f"{prefix}ai"),
             ("imgur", f"{prefix}findimg"),
             ("findseed", f"{prefix}findseed"),
+            ("findblock", f"{prefix}findblock"),
             ("playrandom", f"{prefix}playrandom"),
             ("@someone", f"@someone"),
             ("whisper", f"{prefix}whisper"),
-            ("play", f"{prefix}play")
+            ("play", f"{prefix}play"),
+
         ]
 
         data = []
         for key, title in keys:
             if key in user:
-                data.append([key, title, user[key]["total_uses"]])
+                data.append([key, title, user[key]["use_total"]])
 
-        length = getLongest([user[i[0]]["total_uses"] for i in data])
+        length = getLongest([user[i[0]]["use_total"] for i in data])
 
         message = [f"``{str(value).rjust(length)}`` - **{title}**" for key, title, value in data]
 
-        embed.add_field(name="Command Uses",
+        embed.add_field(name="Uses",
                         inline=False,
                         value="\n".join(message))
 

@@ -8,6 +8,7 @@ import certifi
 
 # custom imports
 from files.jerrinth import JerrinthBot
+from files.buttonMenu import ButtonMenu
 from files.wrappers import *
 from files.support import *
 from files.config import *
@@ -18,16 +19,12 @@ class ImgurCog(commands.Cog):
     def __init__(self, bot):
         self.bot: JerrinthBot = bot
 
-        # sslcontext = ssl.create_default_context(cafile=certifi.where())
-
     def ensureUserImgurExists(self, ctx):
         self.bot.ensureUserExists(ctx)
         if self.bot.getUser(ctx).get("imgur", None) is None:
             self.bot.getUser(ctx)["imgur"] = EMPTY_IMGUR.copy()
 
-    @commands.command(name="findimg", aliases=["FINDIMG"])
-    @discord.ext.commands.cooldown(*FINDIMG_COOLDOWN)
-    @ctx_wrapper(redirect=True)
+    @wrapper_command(name="findimg", cooldown=FINDIMG_COOLDOWN)
     async def findImageCommand(self, ctx):
 
         self.ensureUserImgurExists(ctx)
@@ -40,8 +37,8 @@ class ImgurCog(commands.Cog):
         if data is None:
             return await ctx.sendError("Something went wrong! Please try again.")
 
-        self.bot.getUser(ctx)["imgur"]["total_uses"] += 1
-        self.bot.getUser(ctx)["imgur"]["last_use"] = time.time()
+        self.bot.getUser(ctx)["imgur"]["use_total"] += 1
+        self.bot.getUser(ctx)["imgur"]["use_last"] = time.time()
         self.bot.saveData()
 
         message = await self.bot.imgur.createMessage(data)
@@ -59,13 +56,11 @@ class ImgurCog(commands.Cog):
                 await ctx.send("Something went wrong with the interaction.")
 
     @findImageCommand.error
-    @error_wrapper(use_cooldown=True)
+    @wrapper_error(use_cooldown=True)
     async def findImageCommandError(self, ctx, error):
         pass
 
-    @commands.command(name="imgur", aliases=[])
-    # @discord.ext.commands.cooldown(1, 4, commands.BucketType.guild)
-    @ctx_wrapper(redirect=True)
+    @wrapper_command(name="imgur")
     async def imgurCommand(self, ctx, *args):
 
         self.ensureUserImgurExists(ctx)
@@ -88,11 +83,6 @@ class ImgurCog(commands.Cog):
                 await menu.send(ctx)
             except discord.errors.Forbidden:
                 await ctx.send("Something went wrong with the interaction.")
-
-
-
-
-
 
 
 async def setup(bot):
