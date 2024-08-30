@@ -3,20 +3,20 @@
 from asyncio import WindowsSelectorEventLoopPolicy
 
 from discord import Interaction
-from discord.ext import tasks
 from discord.ext.commands import CommandNotFound, CommandOnCooldown
+from discord.ext import tasks
 import datetime
 import random
 import logging
 from files.wrappers import *
-
-logging.basicConfig(level=logging.CRITICAL)
 
 # custom imports
 from files.jerrinth import JerrinthBot
 from funcs.handle_dms import *
 from files.support import *
 from files.config import *
+
+logging.basicConfig(level=logging.CRITICAL)
 
 Jerrinth = JerrinthBot(data_version=1,
                        debug=DEBUG,
@@ -108,7 +108,6 @@ async def on_message(message: discord.Message) -> None:
         else:
             break
 
-
     # process all commands
     await Jerrinth.process_commands(message)
 
@@ -133,6 +132,6 @@ async def on_command_error(ctx, error):
     print(f"User Message: '{ctx.message.content}'")
     raise error
 
-
+logging.getLogger('discord.gateway').setLevel(logging.WARNING)
 asyncio.set_event_loop_policy(WindowsSelectorEventLoopPolicy())
 Jerrinth.begin()
