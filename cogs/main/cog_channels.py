@@ -10,6 +10,8 @@ from files.jerrinth import JerrinthBot
 
 class ChannelsCog(commands.Cog):
     def __init__(self, bot):
+        print(f"loading '{self.__module__}'")
+
         self.bot: JerrinthBot = bot
 
     """
@@ -50,7 +52,23 @@ class ChannelsCog(commands.Cog):
             await ctx.send("Only admins can set a channel engine!")
     """
 
-    @wrapper_command(name="addchannel", aliases=["ac"], user_req=1, redirect=False)
+    @wrapper_command(
+        name="addchannel",
+        aliases=["ac"],
+        description="Allow this channel for bot commands.\n",
+        slash=True,
+        slash_description="Allow this channel for bot commands.",
+        slash_args=[
+            {
+                "name": "channel",
+                "description": "Channel mention or ID (optional).",
+                "type": "string",
+                "required": False
+            }
+        ],
+        user_req=1,
+        redirect=False
+    )
     async def addChannelCommand(self, ctx, channel=None):
         channel = argParsePing(channel, excluded=["all"])
         ctx.updateChannel(channel)
@@ -68,7 +86,23 @@ class ChannelsCog(commands.Cog):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.send("Only admins can add channels to my scope!")
 
-    @wrapper_command(name="delchannel", aliases=["dc"], user_req=1, redirect=False)
+    @wrapper_command(
+        name="delchannel",
+        aliases=["dc"],
+        description="Disallow a channel for bot commands.\n",
+        slash=True,
+        slash_description="Disallow a channel for bot commands.",
+        slash_args=[
+            {
+                "name": "channel",
+                "description": "Channel mention/ID or 'all'.",
+                "type": "string",
+                "required": False
+            }
+        ],
+        user_req=1,
+        redirect=False
+    )
     async def deleteChannelCommand(self, ctx, channel=None):
         channel = argParsePing(channel, excluded=["all"])
         ctx.updateChannel(channel)
@@ -93,7 +127,14 @@ class ChannelsCog(commands.Cog):
         if isinstance(error, commands.errors.MissingPermissions):
             await ctx.send("Only admins can remove channels to my scope!")
 
-    @wrapper_command(name="channels", aliases=["c"], redirect=False)
+    @wrapper_command(
+        name="channels",
+        aliases=["c"],
+        description="List channels where commands are allowed.\n",
+        slash=True,
+        slash_description="List channels where commands are allowed.",
+        redirect=False
+    )
     async def channelsCommand(self, ctx, redirect=False):
         self.bot.ensureServerExists(ctx)
         server = self.bot.getServer(ctx)
@@ -123,7 +164,14 @@ class ChannelsCog(commands.Cog):
 
         await ctx.send(embed, reference=True)
 
-    @wrapper_command(name="omni", user_req=1, redirect=False)
+    @wrapper_command(
+        name="omni",
+        description="Toggle bot usage in all channels.\n",
+        slash=True,
+        slash_description="Toggle bot usage in all channels.",
+        user_req=1,
+        redirect=False
+    )
     async def addAllChannels(self, ctx):
         server = self.bot.getServer(ctx)
         prefix = self.bot.gp(ctx)
@@ -134,7 +182,6 @@ class ChannelsCog(commands.Cog):
             description = f"**I can now only use channels that were added using the {prefix}addchannel.**"
 
         await ctx.sendEmbed(description)
-
 
 async def setup(bot):
     await bot.add_cog(ChannelsCog(bot))

@@ -47,10 +47,26 @@ def insert_star(string):
 
 class MathCog(commands.Cog):
     def __init__(self, bot):
+        print(f"loading '{self.__module__}'")
         self.bot: JerrinthBot = bot
         self.nsp = NumericStringParser()
 
-    @wrapper_command(name="solve", aliases=["s"], cooldown=SOLVE_COOLDOWN)
+    @wrapper_command(
+        name="solve",
+        aliases=["s"],
+        description="Solve a math expression.\n",
+        slash=True,
+        slash_description="Solve a math expression.",
+        slash_args=[
+            {
+                "name": "expression",
+                "description": "Math expression to solve.",
+                "type": "string",
+                "required": False
+            }
+        ],
+        cooldown=SOLVE_COOLDOWN
+    )
     async def solveEquationCommand(self, ctx, *args):
         expression = " ".join(args)
 

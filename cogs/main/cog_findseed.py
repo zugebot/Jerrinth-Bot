@@ -12,6 +12,8 @@ from files.config import *
 
 class FindseedCog(commands.Cog):
     def __init__(self, bot):
+        print(f"loading '{self.__module__}'")
+
         self.bot: JerrinthBot = bot
         self.eye_count = 12
 
@@ -20,7 +22,13 @@ class FindseedCog(commands.Cog):
         denominator = 10 ** self.eye_count
         return numerator / denominator
 
-    @wrapper_command(name='findseed', cooldown=FINDSEED_COOLDOWN)
+    @wrapper_command(
+        name='findseed',
+        description='Roll a random end portal.\n',
+        slash=True,
+        slash_description='Roll a random end portal.',
+        cooldown=FINDSEED_COOLDOWN
+    )
     async def findseedCommand(self, ctx):
 
         self.bot.ensureUserExists(ctx)

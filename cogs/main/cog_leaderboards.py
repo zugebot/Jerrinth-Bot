@@ -12,11 +12,32 @@ from files.config import *
 
 class LeaderBoardsCog(commands.Cog):
     def __init__(self, bot):
+        print(f"loading '{self.__module__}'")
+
         self.bot: JerrinthBot = bot
         self.leaderboard_amount = 15
         self.empty_message = "Apparently no one has used the **{}{}** command..."
 
-    @wrapper_command(name="leaderboard")
+    @wrapper_command(
+        name="leaderboard",
+        description="Show command leaderboards.\n",
+        slash=True,
+        slash_description="Show command leaderboards.",
+        slash_args=[
+            {
+                "name": "board",
+                "description": "Leaderboard type (chat, findimg, findseed, findblock, whisper, play, playrandom, someone).",
+                "type": "string",
+                "required": True
+            },
+            {
+                "name": "amount",
+                "description": "How many users to show.",
+                "type": "int",
+                "required": False
+            }
+        ]
+    )
     async def showLeaderboardsCommand(self, ctx, board, amount=None):
         amount = self.getAmount(amount)
         title = "🏆 {} Total Uses Leaderboard"
@@ -116,7 +137,12 @@ class LeaderBoardsCog(commands.Cog):
 
         await ctx.send(newEmbed(leaderboard, title=title))
 
-    @wrapper_command(name="data")
+    @wrapper_command(
+        name="data",
+        description="Show bot usage stats.\n",
+        slash=True,
+        slash_description="Show bot usage stats."
+    )
     async def getDataCommand(self, ctx):
         prefix = self.bot.gp(ctx)
 
@@ -170,7 +196,6 @@ class LeaderBoardsCog(commands.Cog):
                         value=table2)
 
         await ctx.send(embed)
-
 
 async def setup(bot):
     await bot.add_cog(LeaderBoardsCog(bot))

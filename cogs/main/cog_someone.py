@@ -12,9 +12,17 @@ import time
 
 class AtSomeoneCog(commands.Cog):
     def __init__(self, bot):
+        print(f"loading '{self.__module__}'")
+
         self.bot: JerrinthBot = bot
 
-    @wrapper_command(name='someone', cooldown=SOMEONE_COOLDOWN)
+    @wrapper_command(
+        name='someone',
+        description='Ping a random member.\n',
+        slash=True,
+        slash_description='Ping a random member in the server.',
+        cooldown=SOMEONE_COOLDOWN
+    )
     async def pingSomeoneCommand(self, ctx):
 
         self.bot.ensureUserExists(ctx)
@@ -44,7 +52,5 @@ class AtSomeoneCog(commands.Cog):
                 await ctx.message.add_reaction("❌")
                 self.pingSomeoneCommand.reset_cooldown(ctx.super)
 
-
 async def setup(bot):
     await bot.add_cog(AtSomeoneCog(bot))
-

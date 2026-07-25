@@ -1,7 +1,6 @@
 # Jerrin Shirks
 
 # native imports
-import time
 import io
 from copy import deepcopy
 
@@ -9,7 +8,7 @@ from copy import deepcopy
 from files.jerrinth import JerrinthBot
 from files.wrappers import *
 from files.support import *
-from cogs.cog_help import makeHelpMenu
+from cogs.main.cog_help import makeHelpMenu
 from files.buttonMenu import ButtonMenu
 from files.discord_objects import *
 

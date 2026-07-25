@@ -35,9 +35,23 @@ class EightBallCog(commands.Cog):
                            "I do not understand."]
 
     def __init__(self, bot):
+        print(f"loading '{self.__module__}'")
         self.bot: JerrinthBot = bot
 
-    @wrapper_command(name='8ball', description='Let the 8 Ball Predict!\n')
+    @wrapper_command(
+        name='8ball',
+        description='Let the 8 Ball Predict!\n',
+        slash=True,
+        slash_description='Ask the Magic 8 Ball a question.',
+        slash_args=[
+            {
+                "name": "question",
+                "description": "Your question for the 8 Ball.",
+                "type": "string",
+                "required": False
+            }
+        ]
+    )
     async def _8ballCommand(self, ctx, *args):
         """allows the user to get randomized responses from their questions from the magical 8ball."""
         if args:
@@ -45,7 +59,6 @@ class EightBallCog(commands.Cog):
         else:
             response = "🎱 " + random.choice(EightBallCog.BAD_RESPONSES_8BALL)
         return await ctx.send(response)
-
 
 async def setup(bot):
     await bot.add_cog(EightBallCog(bot))

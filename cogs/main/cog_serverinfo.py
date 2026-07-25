@@ -11,9 +11,17 @@ from files.support import *
 
 class ServerInfoCog(commands.Cog):
     def __init__(self, bot):
+        print(f"loading '{self.__module__}'")
+
         self.bot: JerrinthBot = bot
 
-    @wrapper_command(name="settings", redirect=False)
+    @wrapper_command(
+        name="settings",
+        description="Show server settings.\n",
+        slash=True,
+        slash_description="Show this server's settings.",
+        redirect=False
+    )
     async def serverSettingsCommand(self, ctx):
         def emoji(flag: bool) -> str:
             if flag:

@@ -14,9 +14,14 @@ from files.support import *
 from files.config import *
 from funcs.imgur import Imgur
 
+def to_pages(msg):
+    # ButtonMenu accepts: str | Embed | File | [content?, embed?, file?] | list of those
+    return msg if isinstance(msg, list) else [msg]
+
 
 class ImgurCog(commands.Cog):
     def __init__(self, bot):
+        print(f"loading '{self.__module__}'")
         self.bot: JerrinthBot = bot
 
     def ensureUserImgurExists(self, ctx):
@@ -24,7 +29,13 @@ class ImgurCog(commands.Cog):
         if self.bot.getUser(ctx).get("imgur", None) is None:
             self.bot.getUser(ctx)["imgur"] = EMPTY_IMGUR.copy()
 
-    @wrapper_command(name="findimg", cooldown=FINDIMG_COOLDOWN)
+    @wrapper_command(
+        name="findimg",
+        description="Send a random Imgur image.\n",
+        slash=True,
+        slash_description="Send a random Imgur image.",
+        cooldown=FINDIMG_COOLDOWN
+    )
     async def findImageCommand(self, ctx):
 
         self.ensureUserImgurExists(ctx)
@@ -42,25 +53,41 @@ class ImgurCog(commands.Cog):
         self.bot.saveData()
 
         message = await self.bot.imgur.createMessage(data)
-        if isinstance(message, str):
-            await ctx.send(message)
-
-        elif isinstance(message, discord.embeds.Embed):
-            await ctx.send(message)
-
-        elif isinstance(message, list):
-            menu = ButtonMenu(message, index=0, timeout=180)
-            try:
-                await menu.send(ctx)
-            except discord.errors.Forbidden:
-                await ctx.send("Something went wrong with the interaction.")
+        pages = to_pages(message)
+        menu = ButtonMenu(
+            pages,
+            index=0,
+            timeout=180,
+            user=ctx.author,
+            close_mode="delete",
+            delete_on_timeout=False,
+            owner_only=True,
+            hide_nav_for_single=True,  # only ❌ if 1 page
+        )
+        try:
+            await menu.send(ctx)
+        except discord.errors.Forbidden:
+            await ctx.send("Something went wrong with the interaction.")
 
     @findImageCommand.error
     @wrapper_error(use_cooldown=True)
     async def findImageCommandError(self, ctx, error):
         pass
 
-    @wrapper_command(name="imgur")
+    @wrapper_command(
+        name="imgur",
+        description="Browse Imgur gallery images.\n",
+        slash=True,
+        slash_description="Browse Imgur gallery images.",
+        slash_args=[
+            {
+                "name": "query",
+                "description": "Optional gallery query.",
+                "type": "string",
+                "required": False
+            }
+        ]
+    )
     async def imgurCommand(self, ctx, *args):
 
         self.ensureUserImgurExists(ctx)
@@ -78,7 +105,7 @@ class ImgurCog(commands.Cog):
         elif isinstance(message, discord.embeds.Embed):
             await ctx.send(message)
         elif isinstance(message, list):
-            menu = ButtonMenu(message, index=0, timeout=180)
+            menu = ButtonMenu(message, index=0, timeout=180, delete_on_timeout=False)
             try:
                 await menu.send(ctx)
             except discord.errors.Forbidden:

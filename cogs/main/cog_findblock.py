@@ -20,6 +20,7 @@ class UGBCBlock:
 class FindBlockCog(commands.Cog):
 
     def __init__(self, bot):
+        print(f"loading '{self.__module__}'")
         self.bot: JerrinthBot = bot
 
         self.__block_list = [
@@ -486,19 +487,29 @@ class FindBlockCog(commands.Cog):
         ]
         self.blocks: list[UGBCBlock] = []
         self.weights: list[int] = []
+
+        self.total_weight: int = 0
         for block in self.__block_list:
             _blockID, _blockWeight = block.split(":", 1)
+            self.total_weight += int(_blockWeight)
             _blockName = " ".join([i.capitalize() for i in _blockID.split("_")])
 
             obj = UGBCBlock(_blockID, _blockName, int(_blockWeight))
             self.blocks.append(obj)
             self.weights.append(obj.weight)
+        print("Total Block Weight:", self.total_weight)
 
     def getRandomBlock(self) -> UGBCBlock:
         _block = random.choices(self.blocks, self.weights)
         return _block[0]
 
-    @wrapper_command(name="findblock", cooldown=FINDBLOCK_COOLDOWN)
+    @wrapper_command(
+        name="findblock",
+        description="Roll a random minecraft block.\n",
+        slash=True,
+        slash_description="Roll a random minecraft block.",
+        cooldown=FINDBLOCK_COOLDOWN
+    )
     async def findBlockCommand(self, ctx: CtxObject):
 
         self.bot.ensureUserExists(ctx)

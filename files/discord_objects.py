@@ -92,7 +92,10 @@ class CtxObject:
             if ctx.message.guild is not None:
                 self.server = str(ctx.message.guild.id)
                 self.serverInt = ctx.message.guild.id
-                self.nsfw = ctx.channel.nsfw
+                try:
+                    self.nsfw = ctx.channel.nsfw
+                except:
+                    pass
 
             self.user = str(ctx.message.author.id)
             self.userInt = ctx.message.author.id

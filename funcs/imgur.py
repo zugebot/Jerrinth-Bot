@@ -66,66 +66,80 @@ class Imgur:
 
     # •
     async def createMessage(self, data: dict):
+        def trim(txt, n=100):
+            if not txt: return None
+            txt = txt.strip()
+            return txt if len(txt) <= n else txt[:n] + "\n**...**"
+
         if not data["is_album"]:
-            data = await self.__getImageDetails(image_id=data["id"])
-            data = data["data"]
+            data = (await self.__getImageDetails(image_id=data["id"]))["data"]
+            title = (data.get("title") or "").strip()
+            desc = trim(data.get("description"))
+            typ = data.get("type")
 
-            # pprint.pprint(data)
+            # ---- MP4: content URL (for player) + a small embed for text ----
+            if typ == "video/mp4":
+                emb = newEmbed()
+                if desc: emb.description = desc
+                if title: emb.set_author(name=title, url=data["link"])
+                # Some Imgur payloads also have mp4-specific URL fields; prefer them if present
+                url = data.get("mp4") or data["link"]
+                return [url, emb]
 
-            message = ""
+            # GIFs
+            if typ == "image/gif":
+                emb = newEmbed()
+                if desc: emb.description = desc
+                if title: emb.set_author(name=title, url=data["link"])
+                emb.set_image(url=(data.get("gifv") or data["link"]).replace(".gifv", "gif"))
+                return emb
 
-            if data["title"]:
-                message += f"{data['title']}\n"
-            message += f"{data['link']}"
+            # Static images
+            if typ in ["image/png", "image/jpg", "image/jpeg", "image/webp"]:
+                emb = newEmbed()
+                if desc: emb.description = desc
+                if title: emb.set_author(name=title, url=data["link"])
+                emb.set_image(url=data["link"])
+                return emb
 
-            return message
+            # Fallback
+            return f"{title + '\\n' if title else ''}{data['link']}"
 
-        else:
+        # -------- Album --------
+        data = (await self.__getAlbumDetails(album_id=data["id"]))["data"]
+        items = data["images"];
+        length = len(items);
+        pages = []
+        album_title = (data.get("title") or "").strip()
 
-            data = await self.__getAlbumDetails(album_id=data["id"])
-            data = data["data"]
+        for idx, item in enumerate(items, start=1):
+            typ = item.get("type");
+            link = item.get("link")
+            emb = newEmbed()
 
-            items = data["images"]
-            length = len(items)
-            pages = []
-            for n, item in enumerate(items):
-                title = ""
-                embed = newEmbed()
+            if item.get("description"):
+                d = trim(item["description"])
+                if d: emb.description = d
 
-                if item["description"]:
-                    desc = item["description"]
-                    if len(desc) > 100:
-                        desc = desc[:100] + "\n**...**"
-                    embed.description = desc
+            head = []
+            if data.get("images_count", length) > 1: head.append(f"[{idx}/{length}]")
+            if album_title: head.append(album_title)
+            title = " ".join(head).strip()
+            if title: emb.set_author(name=title, url=data.get("link"))
 
-                if data["images_count"] > 1:
-                    title += f"[{n + 1}/{length}] "
+            if typ in ["image/png", "image/jpg", "image/jpeg", "image/webp"]:
+                emb.set_image(url=link)
+                pages.append(emb)
+            elif typ == "image/gif":
+                emb.set_image(url=(item.get("gifv") or link).replace(".gifv", "gif"));
+                pages.append(emb)
+            elif typ == "video/mp4":
+                url = item.get("mp4") or link
+                pages.append(url)
+            else:
+                pages.append(link)
 
-                if data["title"]:
-                    title += data['title']
-                    embed.set_author(name=title, url=data['link'])
-
-                if item["type"] in ["image/png", "image/jpg", "image/jpeg"]:
-                    embed.set_image(url=item['link'])
-                    pages.append(embed)
-
-                if item["type"] == "image/gif":
-                    url = item['gifv'].replace('.gifv', 'gif')
-                    embed.set_image(url=url)
-                    pages.append(embed)
-
-                if item["type"] == "video/mp4":
-                    text = ""
-                    if data["images_count"] != 1:
-                        text = f"**[{n + 1}/{length}]** "
-                    if data["title"]:
-                        text += f"**{data['title']}**\n"
-                    text += item['link']
-                    pages.append(text)
-
-            if data["images_count"] == 1:
-                return pages[0]
-            return pages
+        return pages[0] if len(pages) == 1 else pages
 
     """
     @staticmethod

@@ -71,12 +71,15 @@ def wrapper_play(in_vc: bool = False, stop_playing: bool = False):
 class VoiceChatCog(commands.Cog):
 
     def __init__(self, bot):
+        print(f"loading '{self.__module__}'")
+
         self.bot: JerrinthBot = bot
         self.dir: str = bot.directory + "data/mp3/"
         self.ffmpeg = {
             "Linux": bot.directory + "bin/ffmpeg-6.0-i686-static/ffmpeg",
             "Windows": bot.directory + "bin/ffmpeg.exe",
         }.get(OS, "")
+        print("FFMPEG PATH:", self.ffmpeg)
 
         self.video_length_cap_seconds = 900
         self.downloading_urls = []
@@ -123,7 +126,13 @@ class VoiceChatCog(commands.Cog):
                 if before.channel.guild.voice_client is not None:
                     await before.channel.guild.voice_client.disconnect()
 
-    @wrapper_command(name="old_join", cooldown=VOICE_JOIN_CD)
+    @wrapper_command(
+        name="old_join",
+        description="Join your voice channel.\n",
+        slash=False,
+        slash_description="Join your voice channel.",
+        cooldown=VOICE_JOIN_CD
+    )
     async def joinCommand(self, ctx):
         try:
             await ctx.super.author.voice.channel.connect()
@@ -135,7 +144,13 @@ class VoiceChatCog(commands.Cog):
     async def joinCommandError(self, ctx, error):
         pass
 
-    @wrapper_command(name="old_leaveall", user_req=1)
+    @wrapper_command(
+        name="old_leaveall",
+        description="Disconnect all idle voice clients.\n",
+        slash=False,
+        slash_description="Disconnect all idle voice clients.",
+        user_req=1
+    )
     async def leaveAllCommand(self, ctx):
         [await vc.disconnect(True) for vc in self.bot.voice_clients if not vc.is_playing()]
 
@@ -144,7 +159,13 @@ class VoiceChatCog(commands.Cog):
     async def leaveAllCommandError(self, ctx, error):
         pass
 
-    @wrapper_command(name="old_leave", cooldown=VOICE_LEAVE_CD)
+    @wrapper_command(
+        name="old_leave",
+        description="Leave the current voice channel.\n",
+        slash=False,
+        slash_description="Leave the current voice channel.",
+        cooldown=VOICE_LEAVE_CD
+    )
     async def leaveCommand(self, ctx):
         await ctx.super.voice_client.disconnect()
 
@@ -153,7 +174,13 @@ class VoiceChatCog(commands.Cog):
     async def leaveCommandError(self, ctx, error):
         pass
 
-    @wrapper_command(name="old_stop", cooldown=VOICE_LEAVE_CD)
+    @wrapper_command(
+        name="old_stop",
+        description="Stop audio playback.\n",
+        slash=False,
+        slash_description="Stop audio playback.",
+        cooldown=VOICE_LEAVE_CD
+    )
     @wrapper_play(in_vc=True, stop_playing=True)
     async def stopCommand(self, ctx):
         pass
@@ -163,7 +190,21 @@ class VoiceChatCog(commands.Cog):
     async def stopCommandError(self, ctx, error):
         pass
 
-    @wrapper_command(name="old_volume", cooldown=VOICE_LEAVE_CD)
+    @wrapper_command(
+        name="old_volume",
+        description="Show or set playback volume.\n",
+        slash=False,
+        slash_description="Show or set playback volume.",
+        slash_args=[
+            {
+                "name": "new_volume",
+                "description": "Volume 0-200 (optional).",
+                "type": "string",
+                "required": False
+            }
+        ],
+        cooldown=VOICE_LEAVE_CD
+    )
     @wrapper_play(in_vc=True)
     async def volumeCommand(self, ctx, new_volume=None):
         self.bot.ensureServerExists(ctx)
@@ -243,7 +284,21 @@ class VoiceChatCog(commands.Cog):
 
         return True, filename, title
 
-    @wrapper_command(name="old_play", cooldown=VOICE_PLAY_CD)
+    @wrapper_command(
+        name="old_play",
+        description="Play audio from a URL or file.\n",
+        slash=False,
+        slash_description="Play audio from a URL or file.",
+        slash_args=[
+            {
+                "name": "url",
+                "description": "URL or filename (optional).",
+                "type": "string",
+                "required": False
+            }
+        ],
+        cooldown=VOICE_PLAY_CD
+    )
     @wrapper_play(in_vc=True)
     async def playCommand(self, ctx, url: str = None):
 
@@ -344,7 +399,13 @@ class VoiceChatCog(commands.Cog):
     async def playCommandError(self, ctx, error):
         pass
 
-    @wrapper_command(name="old_playrandom", cooldown=VOICE_PLAY_CD)
+    @wrapper_command(
+        name="old_playrandom",
+        description="Play a random saved file.\n",
+        slash=False,
+        slash_description="Play a random saved file.",
+        cooldown=VOICE_PLAY_CD
+    )
     @wrapper_play(in_vc=True, stop_playing=True)
     async def playRandomCommand(self, ctx):
         vc = self.joinVC(ctx)
@@ -377,7 +438,26 @@ class VoiceChatCog(commands.Cog):
     async def playRandomCommandError(self, ctx, error):
         pass
 
-    @wrapper_command(name="old_playrename")
+    @wrapper_command(
+        name="old_playrename",
+        description="Rename a saved file.\n",
+        slash=False,
+        slash_description="Rename a saved file.",
+        slash_args=[
+            {
+                "name": "old_file",
+                "description": "Existing filename.",
+                "type": "string",
+                "required": True
+            },
+            {
+                "name": "new_file",
+                "description": "New filename.",
+                "type": "string",
+                "required": True
+            }
+        ]
+    )
     async def playRenameCommand(self, ctx, old_file, new_file):
         for char in "/\\*? ":
             if char in new_file:
@@ -393,7 +473,20 @@ class VoiceChatCog(commands.Cog):
         os.rename(self.dir + old_file, self.dir + new_file)
         await ctx.send(newEmbed("Successfully renamed ```{}``` to ```{}```".format(old_file, new_file)))
 
-    @wrapper_command(name="old_playdelete")
+    @wrapper_command(
+        name="old_playdelete",
+        description="Delete a saved file.\n",
+        slash=False,
+        slash_description="Delete a saved file.",
+        slash_args=[
+            {
+                "name": "file_name",
+                "description": "Filename to delete.",
+                "type": "string",
+                "required": True
+            }
+        ]
+    )
     async def playRenameCommand(self, ctx, file_name):
         for char in "/\\*? ":
             if char in file_name:
@@ -413,7 +506,21 @@ class VoiceChatCog(commands.Cog):
         except:
             return await ctx.sendError(f"Something went wrong. Idk lol")
 
-    @wrapper_command(name="old_playsearch", cooldown=VOICE_SEARCH_CD)
+    @wrapper_command(
+        name="old_playsearch",
+        description="Search saved files by name.\n",
+        slash=False,
+        slash_description="Search saved files by name.",
+        slash_args=[
+            {
+                "name": "filename",
+                "description": "Search text.",
+                "type": "string",
+                "required": True
+            }
+        ],
+        cooldown=VOICE_SEARCH_CD
+    )
     async def playSearchCommand(self, ctx, filename):
         files = self.getFileList()
         filename = filename.lower()
@@ -454,7 +561,21 @@ class VoiceChatCog(commands.Cog):
         if error == discord.ext.commands.errors.MissingRequiredArgument:
             return await ctx.sendError("You gotta search *something* silly!")
 
-    @wrapper_command(name="old_playlist", cooldown=VOICE_PLAYLIST_COOLDOWN)
+    @wrapper_command(
+        name="old_playlist",
+        description="Show the saved file list.\n",
+        slash=False,
+        slash_description="Show the saved file list.",
+        slash_args=[
+            {
+                "name": "length",
+                "description": "Items per page (optional).",
+                "type": "string",
+                "required": False
+            }
+        ],
+        cooldown=VOICE_PLAYLIST_COOLDOWN
+    )
     async def playListCommand(self, ctx, length: str = None):
 
         length = int(length) if length is not None and length.isdigit() else 10
@@ -476,7 +597,7 @@ class VoiceChatCog(commands.Cog):
             embed = newEmbed(title=f"Page {index + 1}/{page_len}", description=table)
             embeds.append(embed)
 
-        menu = ButtonMenu(embeds, index=0, timeout=180)
+        menu = ButtonMenu(embeds, index=0, timeout=180, owner_only=False)
         try:
             await menu.send(ctx)
         except discord.errors.Forbidden:

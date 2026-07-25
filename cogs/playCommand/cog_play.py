@@ -1,28 +1,25 @@
 # Jerrin Shirks
+from typing import Dict
 
+from files.buttonMenu import ButtonMenu
 # native imports
 
 # custom imports
-from files.jerrinth import JerrinthBot
-from files.wrappers import *
-from files.support import *
 from files.makeTable import makeTable
-from files.buttonMenu import ButtonMenu
 
 from discord import FFmpegPCMAudio
-from typing import Tuple, Dict, List
 import aiofiles
 import aiohttp
-import inspect
-import signal
-import random
-import re
 from youtube_search import YoutubeSearch
 
 from discord.ui import Button, View
-import discord
 
+from files.jerrinth import JerrinthBot
+from files.wrappers import *
+from files.config import *
+from files.support import *
 from cogs.playCommand.YDL import *
+
 
 
 def format_time(seconds):
@@ -42,17 +39,13 @@ def run_async_callback(loop, callback, *args):
     return future
 
 
-def wrapper_play(in_vc: bool = False, stop_playing: bool = False):
+def wrapper_play(in_vc: bool = False):
     def decorator(func):
         @functools.wraps(func)
         async def wrapper(self, ctx, *args, **kwargs):
             if in_vc:
                 if not ctx.author.voice:
                     return await ctx.send("You're not in a voice channel.")
-            if stop_playing:
-                vc = await self.joinAndGetVC(ctx)
-                if vc.is_playing():
-                    vc.stop()
             return await func(self, ctx, *args, **kwargs)
 
         return wrapper
@@ -192,7 +185,8 @@ class PlayType:
 
 class PlayCog(commands.Cog):
     class Strings:
-        JOIN_VC_BUT_USER_LEFT = "I wanted to be YOUR DJ!!!!!!@##$@#$@#!!@!, but you left the voice channel! Hopefully later my developer makes this join regardless."
+        JOIN_VC_BUT_USER_LEFT = "I wanted to be YOUR DJ!!!!!!@##$@#$@#!!@!, but you left the voice channel! Hopefully " \
+                                "later my developer makes this join regardless."
         VIDEO_TOO_LONG = "Video is too long! ({}s > {}s)"
         SKIP_CURRENT_AUDIO = "Skipped the current audio."
         NO_AUDIO_PLAYING = "No audio is currently playing."
@@ -200,7 +194,8 @@ class PlayCog(commands.Cog):
         NOT_CONNECTED_TO_VC = "I'm not connected to a voice channel."
         ERROR_OCCURRED = "@{}: An error occurred: {}"
         ALREADY_DOWNLOADING = "Hold your horses!- I'm still downloading that!"
-        DOWNLOAD_NOT_FOUND_WHEN_FINISHED = "my life sucks: download_complete_callback somehow ended on a file that doesn't exist?"
+        DOWNLOAD_NOT_FOUND_WHEN_FINISHED = "my life sucks: download_complete_callback somehow ended on a file that " \
+                                           "doesn't exist?"
         STREAM_BUT_NO_DOWNLOAD = "Will not download: {} is longer than {}min.\n"
         NOT_DONE_DOWNLOADING = "That file isn't finished downloading yet! Please try a link or a different file."
         NOTHING_TO_GO_OFF_OF = "I would search that up on YT for you, but that isn't enough to go off of!"
@@ -219,7 +214,8 @@ class PlayCog(commands.Cog):
         self.ydl = YDL()
         self.current_downloads: Dict[str: str] = {}
         self.waiting_to_rename: Dict[str: str] = {}
-        self.music_queue: Dict[str: List[Dict[str: str]]] = {}
+        self.audio_current: Dict[str: str] = {}
+        self.audio_queue: Dict[str: List[Dict[str: str]]] = {}
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
@@ -255,25 +251,44 @@ class PlayCog(commands.Cog):
                 return None
         return vc
 
-    async def monitor_playback(self, vc, ctx, settings, source):
+    async def monitor_playback(self, vc, ctx, settings, audio):
         """Monitor playback and keep the event loop active until the audio finishes."""
         parsed_filename = settings["parsed_filename"]
 
+        # ensure last play command is properly cleaned up
+        current_time = time.time()
+        self.audio_current[ctx.server] = current_time
+        print(f"setting {ctx.server} play to {current_time}")
+
+        if vc.is_playing():
+            vc.stop()
+        source = discord.PCMVolumeTransformer(audio)
+        vc.play(source)
+
         try:
-            while vc.is_playing():
+            while vc.is_playing() and self.audio_current.get(ctx.server, False) == current_time:
                 new_volume = self.getVolume(ctx)
                 if source.volume != new_volume / 100:
                     source.volume = new_volume / 100
-                await asyncio.sleep(1)
+                await asyncio.sleep(0.5)
+
         except Exception as error:
             print(self.Strings.ERROR_OCCURRED.format("playback_complete_callback", error))
+
         finally:
-            print("Playback complete.")
+            # if self.audio_current.get(ctx.server, False) != current_time:
+            # print("Playback stopped before end.")
+            # else:
+            # print("Playback complete.")
             if parsed_filename in self.waiting_to_rename:
                 if os.path.exists(self.dir + parsed_filename):
-                    os.rename(self.dir + parsed_filename, self.dir + self.waiting_to_rename[parsed_filename])
+                    new_filename = self.waiting_to_rename[parsed_filename]
+                    os.rename(self.dir + parsed_filename, self.dir + new_filename)
+                    # print("Renamed \"{}\" to \"{}\"!".format(parsed_filename, new_filename))
                     del self.waiting_to_rename[parsed_filename]
-                    print("Renamed \"{}\" to \"{}\"!")
+
+            if ctx.server in self.audio_current:
+                del self.audio_current[ctx.server]
 
     async def monitor_download(self, audio_url: str, filename: str):
         """Handle downloading and writing the audio to a file independently."""
@@ -306,10 +321,11 @@ class PlayCog(commands.Cog):
         else:
             if filename in self.current_downloads:
                 del self.current_downloads[filename]
-                print(f"Successfully removed \"{filename}\" from the list of current downloads.")
+                # print(f"Successfully removed \"{filename}\" from the list of current downloads.")
             else:
-                print(self.Strings.DOWNLOAD_NOT_FOUND_WHEN_FINISHED)
-            print("Download complete.")
+                # print(self.Strings.DOWNLOAD_NOT_FOUND_WHEN_FINISHED)
+                pass
+            # print("Download complete.")
 
     @staticmethod
     async def setup_settings(ctx, string: str):
@@ -348,7 +364,7 @@ class PlayCog(commands.Cog):
         parsed_filename = replace_spaces(settings["filename"])[:56]
         settings["parsed_filename"] = parsed_filename
         is_a_yt_url = settings["mode"] == "youtube" and settings["url"] != ""
-        file_exists = os.path.exists(self.dir + parsed_filename) and parsed_filename != ""
+        file_exists = os.path.exists(self.dir + settings["filename"]) and settings["filename"] != ""
         is_currently_downloading = parsed_filename in self.current_downloads
         has_attachment = settings["mode"] == "attachment"
 
@@ -410,11 +426,11 @@ class PlayCog(commands.Cog):
         if settings["play_type"] == PlayType.FILE_DOWNLOADED:
             download_file = False
             download_url = ""
-            play_filepath = self.dir + settings["parsed_filename"]
+            play_filepath = self.dir + settings["filename"]
 
-            description = f"Playing cached file:\n``{settings['parsed_filename']}``"
-            audio = FFmpegPCMAudio(play_filepath)
-
+            description = f"Playing cached file:\n``{settings['filename']}``"
+            # Ensure we pass the bot's configured ffmpeg executable so discord.py can spawn the process
+            audio = FFmpegPCMAudio(play_filepath, executable=self.bot.ffmpeg)
 
         elif settings["play_type"] == PlayType.ATTACHMENT_DOWNLOAD:
             attachment = settings["attachment"]
@@ -425,21 +441,17 @@ class PlayCog(commands.Cog):
                 download_file = False
 
             description = f"Playing attachment:\n``{attachment.filename}``"
-            audio = FFmpegPCMAudio(download_url, **self.ffmpeg_opts)
-
+            audio = FFmpegPCMAudio(download_url, executable=self.bot.ffmpeg, **self.ffmpeg_opts)
 
         elif settings["play_type"] == PlayType.YT_STREAM_NO_DOWNLOAD:
             info_dict = settings["info_dict"]
             download_file = False
             download_url = info_dict['url']
 
-            duration = info_dict.get('duration')
-
             description = f"Played a youtube video!" \
                           f"Video is too long to download." \
                           f"\nurl: {settings['url']}"
-            audio = FFmpegPCMAudio(download_url, **self.ffmpeg_opts)
-
+            audio = FFmpegPCMAudio(download_url, executable=self.bot.ffmpeg, **self.ffmpeg_opts)
 
         elif settings["play_type"] == PlayType.YT_STREAM_DOWNLOAD:
             info_dict = settings["info_dict"]
@@ -449,40 +461,55 @@ class PlayCog(commands.Cog):
             description = f"Played a youtube video!" \
                           f"\n\nFilename:\n``{settings['parsed_filename']}``" \
                           f"\n[**{info_dict['title']}**]({settings['url']})"
-            audio = FFmpegPCMAudio(download_url, **self.ffmpeg_opts)
+            audio = FFmpegPCMAudio(download_url, executable=self.bot.ffmpeg, **self.ffmpeg_opts)
         else:
             return
 
         # play the audio source
         await ctx.sendEmbed(
             f"**{self.bot.gp(ctx)}play** used by <@{ctx.user}>\n{description}")
-        source = discord.PCMVolumeTransformer(audio)
-        vc.play(source)
         if not download_file:
-            await self.monitor_playback(vc, ctx, settings, source)
+            await self.monitor_playback(vc, ctx, settings, audio)
         else:
             self.current_downloads[settings["parsed_filename"]] = True
             await asyncio.gather(
                 self.monitor_download(download_url, settings["parsed_filename"]),
-                self.monitor_playback(vc, ctx, settings, source))
+                self.monitor_playback(vc, ctx, settings, audio))
 
     async def playAudio(self, ctx, string: str = "", force: bool = None):
-        vc = await self.joinAndGetVC(ctx)
-        if vc.is_playing():
-            vc.stop()
+        await self.joinAndGetVC(ctx)
 
         settings = await self.setup_settings(ctx, string)
         await self.determine_play_type(settings)
-        if settings is None: return
+        if settings is None:
+            return
 
         await self.stream_and_save_audio(ctx, settings)
 
-    @wrapper_command(name="current_downloads")
+    @wrapper_command(
+        name="current_downloads",
+        description="List active downloads.\n",
+        slash=True,
+        slash_description="List active downloads."
+    )
     async def current_downloads(self, ctx):
         string = "```" + "\n".join([i for i in self.current_downloads]) + "```"
         await ctx.send(string)
 
-    @wrapper_command(name="play")
+    @wrapper_command(
+        name="play",
+        description="Play audio by URL, filename, or search.\n",
+        slash=True,
+        slash_description="Play audio by URL, filename, or search.",
+        slash_args=[
+            {
+                "name": "string",
+                "description": "URL, filename, or search text (optional).",
+                "type": "string",
+                "required": False
+            }
+        ]
+    )
     @wrapper_play(in_vc=True)
     async def play(self, ctx, *, string: str = ""):
         self.ensureUserExistsPlay(ctx)
@@ -491,7 +518,13 @@ class PlayCog(commands.Cog):
 
         await self.playAudio(ctx, string)
 
-    @wrapper_command(name="playskip")
+    @wrapper_command(
+        name="playskip",
+        aliases=["plays"],
+        description="Skip the current audio.\n",
+        slash=True,
+        slash_description="Skip the current audio."
+    )
     @wrapper_play(in_vc=True)
     async def skip(self, ctx):
         """Command to skip the currently playing audio."""
@@ -501,17 +534,13 @@ class PlayCog(commands.Cog):
         else:
             await ctx.send(self.Strings.NO_AUDIO_PLAYING)
 
-    @wrapper_command(name="playstop")
-    @wrapper_play(in_vc=True)
-    async def stop(self, ctx):
-        """Command to stop playing and disconnect the bot."""
-        if ctx.super.voice_client:
-            await ctx.super.voice_client.disconnect()
-            await ctx.send(self.Strings.DISCONNECTED_FROM_VC)
-        else:
-            await ctx.send(self.Strings.NOT_CONNECTED_TO_VC)
-
-    @wrapper_command(name="playrandom")
+    @wrapper_command(
+        name="playrandom",
+        aliases=["playr"],
+        description="Play a random saved file.\n",
+        slash=True,
+        slash_description="Play a random saved file."
+    )
     @wrapper_play(in_vc=True)
     async def playrandom(self, ctx):
         self.ensureUserExistsPlayRandom(ctx)
@@ -521,8 +550,37 @@ class PlayCog(commands.Cog):
         filename = random.choice(os.listdir(self.dir))
         await self.playAudio(ctx, filename)
 
-    @wrapper_command(name="playrename")
-    async def playRename(self, ctx, oldName: str, newName: str):
+    @wrapper_command(
+        name="playrename",
+        description="Deprecated: use playname.\n",
+        slash=True,
+        slash_description="Deprecated: use playname."
+    )
+    async def playRename(self, ctx):
+        await ctx.sendError(f"I changed this command to **{self.bot.gp(ctx)}playname**!")
+
+    @wrapper_command(
+        name="playname",
+        aliases=["playn"],
+        description="Rename a saved file.\n",
+        slash=True,
+        slash_description="Rename a saved file.",
+        slash_args=[
+            {
+                "name": "oldName",
+                "description": "Existing filename.",
+                "type": "string",
+                "required": True
+            },
+            {
+                "name": "newName",
+                "description": "New filename.",
+                "type": "string",
+                "required": True
+            }
+        ]
+    )
+    async def playName(self, ctx, oldName: str, newName: str):
         if oldName == "" or newName == "":
             return await ctx.send("You must supply the before and after file names.")
 
@@ -531,15 +589,9 @@ class PlayCog(commands.Cog):
         if not os.path.exists(old_path):
             return await ctx.send("That file doesn't seem to exist.")
 
-        # Get the file extension of the old file
         old_ext = os.path.splitext(oldName)[1]
-
-        # Remove any incorrect extension from the new name
         new_base = os.path.splitext(newName)[0]
-
-        # Append the correct extension
         newName = new_base + old_ext
-
         new_path = os.path.join(self.dir, newName)
 
         try:
@@ -547,10 +599,24 @@ class PlayCog(commands.Cog):
             await ctx.send(f"Renamed ``{oldName}`` to ``{newName}``!")
         except Exception as e:
             self.waiting_to_rename[oldName] = newName
-            print(self.waiting_to_rename)
+            # print(self.waiting_to_rename)
             await ctx.send(f"Should rename ``{oldName}`` to ``{newName}`` when it's finished playing.")
 
-    @wrapper_command(name="playdelete")
+    @wrapper_command(
+        name="playdelete",
+        aliases=["playd"],
+        description="Delete a saved file.\n",
+        slash=True,
+        slash_description="Delete a saved file.",
+        slash_args=[
+            {
+                "name": "filename",
+                "description": "Filename to delete.",
+                "type": "string",
+                "required": True
+            }
+        ]
+    )
     async def playRenameCommand(self, ctx, filename: str):
         for char in "/\\*? ":
             if char in filename:
@@ -567,25 +633,56 @@ class PlayCog(commands.Cog):
         try:
             os.remove(f"{self.dir}/{filename}")
             await ctx.send(newEmbed(f"Successfully deleted ```{filename}```"))
-        except:
-            return await ctx.sendError(f"Something went wrong. Idk lol")
+        except Exception as e:
+            return await ctx.sendError(f"Something went wrong.\n{e}")
 
-    @wrapper_command(name="playvolume")
+    @wrapper_command(
+        name="playvolume",
+        aliases=["playv"],
+        description="Show or set playback volume.\n",
+        slash=True,
+        slash_description="Show or set playback volume.",
+        slash_args=[
+            {
+                "name": "value",
+                "description": "Volume 0-200 (optional).",
+                "type": "string",
+                "required": False
+            }
+        ]
+    )
     @wrapper_play(in_vc=True)
-    async def playVolume(self, ctx, value=None):
-        if value is None:
-            embed = newEmbed(f"Current Volume: **{'%.0f' % self.getVolume(ctx)}%**\n"
-                             f"\nChange the Volume with"
-                             f"\n**{self.bot.gp(ctx)}volume *NEW_VOLUME**")
-            return await ctx.send(embed)
-
+    async def playVolume(self, ctx: CtxObject, value=None):
         self.bot.ensureServerExists(ctx)
-        new_volume = int(value)
+
+        if value is None:
+            return await ctx.sendEmbed(f"Current Volume: **{'%.0f' % self.getVolume(ctx)}%**\n"
+                                       f"\nTo Change it: **{self.bot.gp(ctx)}playvolume *VALUE**")
+
+        try:
+            new_volume = int(value)
+        except ValueError:
+            return await ctx.sendError("Please tell me a volume between 0 and 200.")
+
+        await ctx.sendEmbed(f"Changed Volume to {value}%")
 
         self.bot.getServer(ctx)["vc_volume"] = new_volume
         self.bot.saveData()
 
-    @wrapper_command(name="playlist")
+    @wrapper_command(
+        name="playlist",
+        description="Show saved files (optionally filtered).\n",
+        slash=True,
+        slash_description="Show saved files (optionally filtered).",
+        slash_args=[
+            {
+                "name": "search",
+                "description": "Filter text (optional).",
+                "type": "string",
+                "required": False
+            }
+        ]
+    )
     async def playList(self, ctx, search: str = None):
         length = 20
 
@@ -617,12 +714,24 @@ class PlayCog(commands.Cog):
         except discord.errors.Forbidden:
             await ctx.send("Something went wrong with the interaction.")
 
-    @wrapper_command(name="playleave")
+    @wrapper_command(
+        name="playleave",
+        aliases=["playl"],
+        description="Leave the voice channel.\n",
+        slash=True,
+        slash_description="Leave the voice channel."
+    )
     @wrapper_play(in_vc=True)
     async def leaveCommand(self, ctx):
         await ctx.super.voice_client.disconnect()
 
-    @wrapper_command(name="playjoin")
+    @wrapper_command(
+        name="playjoin",
+        aliases=["playj"],
+        description="Join your voice channel.\n",
+        slash=True,
+        slash_description="Join your voice channel."
+    )
     async def joinCommand(self, ctx):
         try:
             await ctx.super.author.voice.channel.connect()

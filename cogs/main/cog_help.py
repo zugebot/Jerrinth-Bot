@@ -11,13 +11,35 @@ from files.config import *
 
 class HelpCog(commands.Cog):
     def __init__(self, bot):
+        print(f"loading '{self.__module__}'")
+
         self.bot: JerrinthBot = bot
 
-    @wrapper_command(name="help", redirect=False)
+    @wrapper_command(
+        name="help",
+        description="Show the help menu.\n",
+        slash=True,
+        slash_description="Show the help menu.",
+        slash_args=[
+            {
+                "name": "page",
+                "description": "Page number or topic (optional).",
+                "type": "string",
+                "required": False
+            }
+        ],
+        redirect=False
+    )
     async def helpCommand(self, ctx, page=None):
         await makeHelpMenu(self, ctx, page)
 
-    @wrapper_command(name="server", redirect=False)
+    @wrapper_command(
+        name="server",
+        description="Show the support server link.\n",
+        slash=True,
+        slash_description="Show the support server link.",
+        redirect=False
+    )
     async def displayServer(self, ctx):
         embed = trophyEmbed("[You can find my owner here! [discord server]](https://discord.gg/vGW4pSF8wc)")
         await ctx.send(embed)
@@ -168,23 +190,20 @@ async def makeHelpMenu(bot_obj, ctx, page=None):
                       f"\njoins a vc (only if you are in it)"
                       f"\n- {start}playleave``"
                       f"\nleaves a vc (only if you are in it)"
-                      f"\n- {start}playstop``"
-                      f"\nstops the current song that is playing."
-                       f"\n- {start}playskip``"
+                      f"\n- {start}playskip``"
                       f"\nskips the current song that is playing."
                       f"\n- {start}play``"
                       f"\nplay a piece of media in your voicechat!"
-                      f"\n**,play** supports __filenames__, __youtube links__, and can even search youtube!"
-                      f"\nall videos played using this command stays on my server for the **,playrandom** command."
-                      f"\n"
+                      f"\n**,play** supports __filenames__, __youtube links__, and can __search youtube__!"
+                      f"\nmost things played stays on my server for **{prefix}playrandom**."
                       f"\n- {start}playvolume *number``"
-                      f"\nvalue between 0-100. Adjusts bot volume."
+                      f"\nvalue between 0-200. Adjusts bot volume."
                       f"\n- {start}playrandom``"
                       f"\nplays a random video/audio file from my server."
                       f"\n- {start}playlist **search``"
                       f"\nshows an interactive list of all files on my server."
                       f"\nit will filter by search if you provide one."
-                      f"\n- {start}playrename *oldname *newname``"
+                      f"\n- {start}playname *oldname *newname``"
                       f"\nrenames a file on my server."
                       f"\n- {start}playdelete *filename``"
                       f"\nRemoves a file from my server."
@@ -234,7 +253,7 @@ async def makeHelpMenu(bot_obj, ctx, page=None):
 
     # embed3, embed4,
     pages = [embed1, embed2, embed4, embed5, embed6, embed7, embed8]
-    menu = ButtonMenu(pages, index=page, timeout=180)
+    menu = ButtonMenu(pages, index=page, timeout=180,owner_only=True, close_mode="delete", delete_on_timeout=True)
     try:
         await ctx.super.send(embed=pages[page], view=menu)
     except discord.errors.Forbidden:
