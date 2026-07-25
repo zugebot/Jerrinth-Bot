@@ -17,7 +17,10 @@ def kill_bot(process):
 
 
 def install_dependencies(_venv_python):
-    subprocess.run([_venv_python, '-m', 'pip', 'install', '-U', 'g4f[all]'], check=True)
+    subprocess.run(
+        [_venv_python, "-m", "pip", "install", "g4f[all]==7.8.8"],
+        check=True
+    )
 
 
 def seconds_until_midnight():

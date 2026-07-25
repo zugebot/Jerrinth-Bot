@@ -3,3 +3,17 @@
 /venv/
 /.idea/
 /cogs/__pycache__/
+# Python-generated files
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+.venv/
+
+# Generated archives
+JerrinthBot.zip
+
+# SQLite runtime files
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm

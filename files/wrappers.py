@@ -3,7 +3,7 @@
 # native imports
 import asyncio
 import functools
-from typing import Dict
+from typing import Dict, Any
 from collections import OrderedDict
 from discord.ext import commands
 from discord.ext.commands import Context, BucketType
@@ -90,7 +90,12 @@ def updateNameAndAlias(kwargs: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def wrapper_command(*args, cooldown=None, var_types: Dict[int, str] = None,
-                    user_req: int = 0, redirect: bool = False, **kwargs):
+                    user_req: int = 0, redirect: bool = False,
+                    slash: bool = False, slash_description: str = None, slash_args: list[Dict[str, Any]] = None,
+                    slash_user_ids: list[int] = None,
+                    slash_channel_ids: list[int] = None,
+                    slash_default_permissions: dict = None,
+                    **kwargs):
 
     var_types = var_types or {}
 
@@ -99,44 +104,49 @@ def wrapper_command(*args, cooldown=None, var_types: Dict[int, str] = None,
         if not asyncio.iscoroutinefunction(func):
             raise TypeError("Callback must be a coroutine.")
 
-        # Step 1: update name / aliases
         kwargs = updateNameAndAlias(kwargs)
 
-        # Step 2: apply command decorator
-        command = commands.command(*args, **kwargs)(func)
+        if slash_args is None:
+            slash_args_local = []
+        else:
+            slash_args_local = slash_args
+            for arg in slash_args_local:
+                if "name" not in arg:
+                    raise ValueError("@wrapper_command: slash_args items must include a 'name'.")
 
-        # Step 3: apply cooldown if specified
-        if cooldown is not None:
-            _rate, _per, _type = cooldown
-            command = commands.cooldown(_rate, _per, _type)(command)
+        slash_meta = {
+            "enabled": slash,
+            "description": slash_description or kwargs.get("description") or (func.__doc__ or "").strip() or "No description provided.",
+            "args": slash_args_local,
+            "var_types": var_types,
+            "user_req": user_req,
+            "user_ids": slash_user_ids or [],
+            "channel_ids": slash_channel_ids or [],
+            "default_permissions": slash_default_permissions,
+        }
 
-        # Step 4: create the wrapper function to handle context and argument parsing
         @functools.wraps(func)
         async def wrapper(self, context, *inner_args, **inner_kwargs):
-            # Upgrade context object
             context = CtxObject(context)
 
-            # Disable for banned users
             if str(context.user) in self.bot.banned_users:
                 return await context.sendError("My creator has specifically blacklisted you from using me lol.")
 
-            # User permissions
             if user_req == 2 and not is_jerrin(context.author.id):
                 return
             elif user_req == 1 and not context.message.author.guild_permissions.administrator:
                 return
 
-            # Force redirect
             if redirect and await send_redirect(self, context):
                 return
 
-            # Parse arguments
             arg_type_map = {
                 "num": argParseInt,
                 "number": argParseInt,
                 "int": argParseInt,
                 "ping": argParsePing
             }
+
             new_args = [
                 arg_type_map.get(var_types.get(i), lambda x: x)(arg)
                 for i, arg in enumerate(inner_args)
@@ -144,8 +154,18 @@ def wrapper_command(*args, cooldown=None, var_types: Dict[int, str] = None,
 
             return await func(self, context, *new_args, **inner_kwargs)
 
-        # Replace the original function with the wrapped one
-        command.callback = wrapper
+        wrapper._slash_meta = slash_meta
+        func._slash_meta = slash_meta
+
+        command = commands.command(*args, **kwargs)(wrapper)
+
+        if cooldown is not None:
+            _rate, _per, _type = cooldown
+            command = commands.cooldown(_rate, _per, _type)(command)
+
+        command._slash_meta = slash_meta
+        command.callback._slash_meta = slash_meta
+        command.extras["slash_meta"] = slash_meta
 
         return command
 
@@ -173,6 +193,4 @@ def wrapper_error(use_cooldown: bool = False):
         return wrapper
 
     return decorator
-
-
 

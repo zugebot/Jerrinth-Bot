@@ -303,16 +303,21 @@ def splitResponse2(response, split_size):
     while len(response) > split_size:
         segment = response[:split_size]
 
-        index = segment[::-1].find("\n")
-        if index == -1:
-            index = segment[::-1].find(" ")
-            if index == -1:
-                index = 0
+        split_index = segment.rfind("\n")
 
-        segment = segment[:split_size - index]
+        if split_index == -1:
+            split_index = segment.rfind(" ")
 
+        if split_index == -1:
+            split_index = split_size
+
+        segment = response[:split_index].strip()
         segments.append(segment)
-        response = response[len(segment):]
+
+        response = response[split_index:].strip()
+
+    if response:
+        segments.append(response)
 
     return segments
 
